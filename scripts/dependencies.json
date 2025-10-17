@@ -99,7 +99,7 @@
       },
       {
         "name": "apex",
-        "url": "https://github.com/NVIDIA/apex.git",
+        "url": "https://github.com/UmeAiRT/apex",
         "commit": "master",
         "install_options": "-v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings \"--build-option=--cpp_ext\" --config-settings \"--build-option=--cuda_ext\""
       }
