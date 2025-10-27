@@ -17,7 +17,7 @@ param(
 )
 $comfyPath = Join-Path $InstallPath "ComfyUI"
 $scriptPath = Join-Path $InstallPath "scripts"
-$condaPath = Join-Path $InstallPath "Miniconda3"
+$condaPath = Join-Path $env:LOCALAPPDATA "Miniconda3"
 $condaExe = Join-Path $condaPath "Scripts\conda.exe"
 $logPath = Join-Path $InstallPath "logs"
 $logFile = Join-Path $logPath "install_log.txt"
@@ -26,7 +26,7 @@ $logFile = Join-Path $logPath "install_log.txt"
 #$dependenciesFile = Join-Path (Split-Path -Path $MyInvocation.MyCommand.Definition -Parent) "dependencies.json"
 #if (-not (Test-Path $dependenciesFile)) { Write-Host "FATAL: dependencies.json not found..." -ForegroundColor Red; Read-Host; exit 1 }
 #$dependencies = Get-Content -Raw -Path $dependenciesFile | ConvertFrom-Json
-#if (-not (Test-Path $logPath)) { New-Item -ItemType Directory -Force -Path $logPath | Out-Null }
+if (-not (Test-Path $logPath)) { New-Item -ItemType Directory -Force -Path $logPath | Out-Null }
 
 function Write-Log {
     param([string]$Message, [int]$Level = 1, [string]$Color = "Default")
@@ -134,7 +134,7 @@ Write-Log "Setting up Miniconda and Conda Environment" -Level 0
 if (-not (Test-Path $condaPath)) {
     Write-Log "Miniconda not found. Installing..." -Level 1 -Color Yellow
     $minicondaInstaller = Join-Path $env:TEMP "Miniconda3-latest-Windows-x86_64.exe"
-    Download-File -Uri "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe" -OutFile $minicondaInstaller
+    Download-File -Uri "https://repo.anaconda.com/miniconda/Miniconda3-py312_25.7.0-2-Windows-x86_64.exe" -OutFile $minicondaInstaller
     Start-Process -FilePath $minicondaInstaller -ArgumentList "/InstallationType=JustMe /RegisterPython=0 /S /D=$condaPath" -Wait
     Remove-Item $minicondaInstaller
 } else {
