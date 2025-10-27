@@ -175,6 +175,7 @@ try {
         Read-Host "Press Enter to exit."
         exit 1
     }
+}	
 if (-not (Test-Path $condaPath)) {
     Write-Log "Miniconda not found. Installing..." -Level 1 -Color Yellow
     $minicondaInstaller = Join-Path $env:TEMP "Miniconda3-latest-Windows-x86_64.exe"
