@@ -98,8 +98,8 @@ function Invoke-Conda-Command {
         [string]$Command,
         [string]$Arguments
     )
-    $condaRun = Join-Path $condaPath "Scripts\conda-run.exe"
-    Invoke-AndLog $condaRun "-n UmeAiRT $Command $Arguments"
+    # Plus besoin de $condaRun, on utilise $condaExe qui est défini globalement
+    Invoke-AndLog $condaExe "run -n UmeAiRT $Command $Arguments"
 }
 
 #===========================================================================
@@ -140,6 +140,8 @@ if (-not (Test-Path $condaPath)) {
 } else {
     Write-Log "Miniconda is already installed" -Level 1 -Color Green
 }
+Write-Log "Accepting Anaconda Terms of Service..." -Level 1
+Invoke-AndLog "$condaExe" "config --set anaconda_tos_accepted yes -y"
 
 $envExists = Invoke-AndLog "$condaExe" "env list" | Select-String -Pattern "UmeAiRT"
 if (-not $envExists) {
