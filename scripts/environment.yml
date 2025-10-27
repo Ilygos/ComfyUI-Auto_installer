@@ -7,7 +7,7 @@ channels:
 dependencies:
   - python=3.12
   - git
-  - cuda-toolkit=12.9
+  - nvidia::cuda-toolkit=12.9.1
   - pip
   - conda-forge::aria2
   - ninja
