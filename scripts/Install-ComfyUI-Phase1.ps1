@@ -216,7 +216,8 @@ pause
 $launcherContent | Out-File -FilePath $phase2LauncherPath -Encoding utf8
 
 # Exécute le lanceur
-Invoke-AndLog $phase2LauncherPath ""
+Write-Log "Ouverture d'une nouvelle fenêtre pour la Phase 2..." -Level 2
+Start-Process -FilePath $phase2LauncherPath -Wait
 
 Write-Log "-------------------------------------------------------------------------------" -Color Green
 Write-Log "Installation terminée !" -Color Green
