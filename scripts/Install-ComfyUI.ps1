@@ -59,30 +59,56 @@ function Write-Log {
 function Invoke-AndLog {
     param(
         [string]$File,
-        [string]$Arguments
+        [string]$Arguments,
+        [switch]$IgnoreErrors
     )
     
-    # Path to a unique temporary log file.
+    # Chemin vers un fichier log temporaire unique.
     $tempLogFile = Join-Path $env:TEMP ([System.Guid]::NewGuid().ToString() + ".tmp")
 
     try {
-        # Execute the command and redirect ALL of its output to the temporary file.
-        $commandToRun = "`"$File`" $Arguments"
-        $cmdArguments = "/C `"$commandToRun > `"`"$tempLogFile`"`" 2>&1`""
-        Start-Process -FilePath "cmd.exe" -ArgumentList $cmdArguments -Wait -WindowStyle Hidden
+        Write-Log "Executing: $File $Arguments" -Level 3 -Color DarkGray
+
+        # Exécute la commande et redirige TOUS les flux (*>) vers le flux de succès (1)
+        # puis envoie ce flux dans un fichier temporaire.
+        & $File $Arguments *>&1 | Out-File -FilePath $tempLogFile -Encoding utf8
         
-        # Once the command is complete, read the temporary file.
-        if (Test-Path $tempLogFile) {
-            $output = Get-Content $tempLogFile
-            # Append the output to the main log file.
+        # Lit le fichier temporaire.
+        $output = if (Test-Path $tempLogFile) { Get-Content $tempLogFile } else { @() }
+        
+        # Vérifie le code de sortie du processus natif
+        if ($LASTEXITCODE -ne 0 -and -not $IgnoreErrors) {
+            Write-Log "ERREUR: La commande a échoué avec le code $LASTEXITCODE." -Color Red
+            Write-Log "Commande: $File $Arguments" -Color Red
+            Write-Log "Sortie de l'erreur:" -Color Red
+            
+            # Affiche l'erreur dans la console ET dans le log
+            $output | ForEach-Object {
+                Write-Host $_ -ForegroundColor Red
+                Add-Content -Path $logFile -Value $_
+            }
+            
+            # Arrête le script
+            throw "L'exécution de la commande a échoué. Vérifiez les logs."
+        } else {
+            # Si tout va bien, ajoute la sortie au log principal
             Add-Content -Path $logFile -Value $output
         }
+
     } catch {
-        Write-Log "FATAL ERROR trying to execute command: $commandToRun" -Color Red
+        # Cela attrape le 'throw' ci-dessus ou une erreur PowerShell
+        Write-Log "ERREUR FATALE lors de la tentative d'exécution: $File $Arguments" -Color Red
+        $errorMsg = $_ | Out-String
+        Write-Log $errorMsg -Color Red
+        Add-Content -Path $logFile -Value $errorMsg
+        
+        # Stoppe le script et attend que l'utilisateur lise l'erreur
+        Read-Host "Une erreur fatale est survenue. Appuyez sur Entrée pour quitter."
+        exit 1
     } finally {
-        # Ensure the temporary file is always deleted.
+        # S'assure que le fichier temporaire est toujours supprimé.
         if (Test-Path $tempLogFile) {
-            Remove-Item $tempLogFile
+            Remove-Item $tempLogFile -ErrorAction SilentlyContinue
         }
     }
 }
