@@ -124,15 +124,7 @@ function Download-File {
     Invoke-AndLog "powershell.exe" "-NoProfile -Command `"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '$Uri' -OutFile '$OutFile'`""
 }
 
-function Invoke-Conda-Build-Command {
-    param(
-        [string]$Command,
-        [string]$Arguments
-    )
-    # Cette version OMET --no-activate pour forcer l'exécution
-    # des scripts d'activation du compilateur (et accepte le "cls").
-    Invoke-AndLog $condaExe "run --no-capture-output -n UmeAiRT $Command $Arguments"
-}
+
 #===========================================================================
 # SECTION 2: MAIN SCRIPT EXECUTION
 #===========================================================================
@@ -215,21 +207,15 @@ Write-Log "Installing packages from git repositories..." -Level 1
 foreach ($repo in $dependencies.pip_packages.git_repos) {
     Write-Log "Installing $($repo.name)..." -Level 2
     $installUrl = "git+$($repo.url)@$($repo.commit)"
+    $pipArgs = ""
     if ($repo.name -eq "xformers") {
         $pipArgs = "-m pip install --no-build-isolation --verbose `"$installUrl`""
-        Write-Log "Using Build-Command for xformers (l'écran peut s'effacer)..." -Level 3
-        Invoke-Conda-Build-Command "python" $pipArgs
-
     } elseif ($repo.name -eq "apex") {
         $pipArgs = "-m pip install $($repo.install_options) `"$installUrl`""
-        Write-Log "Using Build-Command for apex (l'écran peut s'effacer)..." -Level 3
-        Invoke-Conda-Build-Command "python" $pipArgs
-
     } else {
-        # Utilise la commande standard (sans 'cls') pour les autres repos
         $pipArgs = "-m pip install `"$installUrl`""
-        Invoke-AndLog "python" $pipArgs
     }
+	Invoke-AndLog "python" $pipArgs
 }
 
 # --- Step 6: Download Workflows & Settings ---
