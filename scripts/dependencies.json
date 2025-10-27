@@ -1,4 +1,11 @@
 {
+	"tools": {
+    "vs_build_tools": {
+      "url": "https://aka.ms/vs/17/release/vs_BuildTools.exe",
+      "arguments": "--quiet --wait --norestart --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.VC.CMake.Project --add Microsoft.VisualStudio.Component.Windows11SDK.26100",
+      "install_path": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools"
+    },
+  },
   "repositories": {
     "comfyui": {
         "url": "https://github.com/comfyanonymous/ComfyUI.git"
