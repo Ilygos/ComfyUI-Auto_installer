@@ -153,6 +153,28 @@ Write-Host "--------------------------------------------------------------------
 
 # --- Step 1: Setup Miniconda and Conda Environment ---
 Write-Log "Setting up Miniconda and Conda Environment" -Level 0
+Write-Log "Checking/Enabling Long Path support in Windows..." -Level 1
+$regPath = "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem"
+$regKey = "LongPathsEnabled"
+try {
+    $currentValue = Get-ItemPropertyValue -Path $regPath -Name $regKey -ErrorAction Stop
+    if ($currentValue -eq 1) {
+        Write-Log "Long paths are already enabled." -Level 2 -Color Green
+    } else {
+        Write-Log "Enabling long paths (requires registry modification)..." -Level 2 -Color Yellow
+        Set-ItemProperty -Path $regPath -Name $regKey -Value 1 -Type DWord -Force
+        Write-Log "Long paths enabled. A system restart might be needed for full effect, but installation will proceed." -Level 2 -Color Green
+    }
+} catch {
+    Write-Log "Could not read registry key, attempting to create and enable long paths..." -Level 2 -Color Yellow
+    try {
+        New-ItemProperty -Path $regPath -Name $regKey -Value 1 -PropertyType DWord -Force -ErrorAction Stop
+        Write-Log "Long paths enabled. A system restart might be needed for full effect, but installation will proceed." -Level 2 -Color Green
+    } catch {
+        Write-Log "FATAL: Failed to enable long paths. Check script permissions (Run as Administrator)." -Level 0 -Color Red
+        Read-Host "Press Enter to exit."
+        exit 1
+    }
 if (-not (Test-Path $condaPath)) {
     Write-Log "Miniconda not found. Installing..." -Level 1 -Color Yellow
     $minicondaInstaller = Join-Path $env:TEMP "Miniconda3-latest-Windows-x86_64.exe"
