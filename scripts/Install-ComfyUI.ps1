@@ -175,9 +175,21 @@ Write-Log "Accepting Anaconda Terms of Service..." -Level 1
 Invoke-AndLog "$condaExe" "tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main"
 Invoke-AndLog "$condaExe" "tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r"
 Invoke-AndLog "$condaExe" "tos accept --override-channels --channel https://repo.anaconda.com/pkgs/msys2"
-Write-Log "Installing Visual Studio Build Tools..." -Level 1
-$vsbtArgs = "install --id Microsoft.VisualStudio.BuildTools --override `"--wait --quiet --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended`""
-Invoke-AndLog "winget" $vsbtArgs
+
+Write-Log "Checking for VS Build Tools" -Level 1
+$vsTool = $dependencies.tools.vs_build_tools
+if (-not (Test-Path $vsTool.install_path)) {
+    Write-Log "VS Build Tools not found. Installing..." -Level 1 -Color Yellow
+    $vsInstaller = Join-Path $env:TEMP "vs_buildtools.exe"
+    Download-File -Uri $vsTool.url -OutFile $vsInstaller
+    Start-Process -FilePath $vsInstaller -ArgumentList $vsTool.arguments -Wait
+    Remove-Item $vsInstaller
+}
+else {
+    Write-Log "Visual Studio Build Tools are already installed" -Level 1 -Color Green
+}
+
+
 $envExists = Invoke-AndLog "$condaExe" "env list" | Select-String -Pattern "UmeAiRT"
 if (-not $envExists) {
     Write-Log "Creating Conda environment 'UmeAiRT'..." -Level 1
