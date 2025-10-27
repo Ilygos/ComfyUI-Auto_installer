@@ -145,6 +145,9 @@ Invoke-AndLog "$condaExe" "config --set anaconda_tos_accepted yes -y"
 Invoke-AndLog "$condaExe" "tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main -y"
 Invoke-AndLog "$condaExe" "tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r -y"
 Invoke-AndLog "$condaExe" "tos accept --override-channels --channel https://repo.anaconda.com/pkgs/msys2 -y"
+conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/msys2
 
 $envExists = Invoke-AndLog "$condaExe" "env list" | Select-String -Pattern "UmeAiRT"
 if (-not $envExists) {
