@@ -124,24 +124,6 @@ function Download-File {
     Invoke-AndLog "powershell.exe" "-NoProfile -Command `"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '$Uri' -OutFile '$OutFile'`""
 }
 
-function Invoke-Conda-Command {
-    param(
-        [string]$Command,
-        [string]$Arguments
-    )
-    # Plus besoin de $condaRun, on utilise $condaExe qui est défini globalement
-    Invoke-AndLog $condaExe "run --no-capture-output --no-activate -n UmeAiRT $Command $Arguments"
-}
-
-function Invoke-Conda-Build-Command {
-    param(
-        [string]$Command,
-        [string]$Arguments
-    )
-    # Cette version OMET --no-activate pour forcer l'exécution
-    # des scripts d'activation du compilateur (et accepte le "cls").
-    Invoke-AndLog $condaExe "run --no-capture-output -n UmeAiRT $Command $Arguments"
-}
 #===========================================================================
 # SECTION 2: MAIN SCRIPT EXECUTION
 #===========================================================================
