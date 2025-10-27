@@ -69,9 +69,14 @@ function Invoke-AndLog {
     try {
         Write-Log "Executing: $File $Arguments" -Level 3 -Color DarkGray
 
-        # Exécute la commande et redirige TOUS les flux (*>) vers le flux de succès (1)
-        # puis envoie ce flux dans un fichier temporaire.
-        & $File $Arguments *>&1 | Out-File -FilePath $tempLogFile -Encoding utf8
+        # CONSTRUIT la chaîne de commande complète pour Invoke-Expression.
+        # Nous mettons $File entre guillemets (au cas où il contiendrait des espaces)
+        # et nous laissons $Arguments tel quel pour que PowerShell puisse l'analyser.
+        # Tous les flux (*>&1) sont redirigés vers le fichier temporaire.
+        $CommandToRun = "& `"$File`" $Arguments *>&1 | Out-File -FilePath `"$tempLogFile`" -Encoding utf8"
+        
+        # EXÉCUTE la chaîne de commande
+        Invoke-Expression $CommandToRun
         
         # Lit le fichier temporaire.
         $output = if (Test-Path $tempLogFile) { Get-Content $tempLogFile } else { @() }
