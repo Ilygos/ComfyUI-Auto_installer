@@ -167,7 +167,6 @@ if (-not (Test-Path $condaPath)) {
     Write-Log "Miniconda is already installed" -Level 1 -Color Green
 }
 Write-Log "Accepting Anaconda Terms of Service..." -Level 1
-Invoke-AndLog "$condaExe" "config --set anaconda_tos_accepted yes -y"
 Invoke-AndLog "$condaExe" "tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main"
 Invoke-AndLog "$condaExe" "tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r"
 Invoke-AndLog "$condaExe" "tos accept --override-channels --channel https://repo.anaconda.com/pkgs/msys2"
