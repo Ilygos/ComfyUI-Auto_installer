@@ -19,6 +19,7 @@ $filesToDownload = @(
 
     # Configuration Files
     @{ RepoPath = "scripts/environment.yml";             LocalPath = "scripts/environment.yml" },
+    @{ RepoPath = "scripts/dependencies.json";              LocalPath = "scripts/dependencies.json" },
     @{ RepoPath = "scripts/custom_nodes.csv";              LocalPath = "scripts/custom_nodes.csv" },
 
     # Batch Launchers
