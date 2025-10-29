@@ -211,6 +211,12 @@ if (-not $envExists) {
 } else {
     Write-Log "Conda environment 'UmeAiRT' already exists" -Level 1 -Color Green
 }
+
+Write-Log "Configuring Git to handle long paths..." -Level 1
+# Note: On utilise le .bat lanceur pour exécuter DANS l'env
+$gitConfigCmd = "call `"$($condaExe -replace 'conda.exe', 'activate.bat')`" UmeAiRT && git config --system core.longpaths true"
+Invoke-AndLog "cmd.exe" "/C $gitConfigCmd"
+
 Write-Log "Environnement Conda prêt." -Level 1 -Color Green
 
 # --- DÉBUT DU LANCEUR DE LA PHASE 2 ---
