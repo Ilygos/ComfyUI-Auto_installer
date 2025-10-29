@@ -74,25 +74,24 @@ function Download-File {
     
     Write-Log "Downloading `"$($Uri.Split('/')[-1])`"" -Level 2 -Color DarkGray
     
-    # Vérifie si aria2c est disponible (il devrait être dans le PATH de Conda)
-    $aria2 = Get-Command aria2c -ErrorAction SilentlyContinue
+    # Chemin attendu pour aria2c.exe (installé par Phase 1)
+    $aria2ExePath = Join-Path $env:LOCALAPPDATA "aria2\aria2c.exe"
     
-    if ($null -ne $aria2) {
+    # Vérifie si le fichier existe à cet endroit précis
+    if (Test-Path $aria2ExePath) {
         # --- Solution Rapide : Utiliser Aria2 ---
-        Write-Log "Using aria2c for accelerated download..." -Level 3
+        Write-Log "Using aria2c from '$aria2ExePath'..." -Level 3
         $OutDir = Split-Path -Path $OutFile -Parent
         $OutName = Split-Path -Path $OutFile -Leaf
-        
-        # Arguments Aria2 optimisés
         $aria2Args = "--console-log-level=warn --quiet=true -x 16 -s 16 -k 1M --dir=`"$OutDir`" --out=`"$OutName`" `"$Uri`""
         
-        # Appelle aria2c directement (il est dans le PATH)
-        Invoke-AndLog "aria2c" $aria2Args
+        # Appelle aria2c en utilisant le chemin complet
+        Invoke-AndLog $aria2ExePath $aria2Args 
     }
     else {
         # --- Solution Lente (Fallback) : Utiliser PowerShell ---
-        Write-Log "aria2c not found, using slower Invoke-WebRequest..." -Level 3
-        # Utilise Invoke-WebRequest direct pour éviter la boucle avec Invoke-AndLog
+        Write-Log "aria2c.exe not found at '$aria2ExePath', using slower Invoke-WebRequest..." -Level 3
+        # ... (code Invoke-WebRequest inchangé) ...
         try {
             [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
             Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing -ErrorAction Stop
@@ -103,6 +102,7 @@ function Download-File {
         }
     }
 }
+
 function Ask-Question {
     param([string]$Prompt, [string[]]$Choices, [string[]]$ValidAnswers)
     $choice = ''
