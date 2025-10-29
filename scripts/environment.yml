@@ -4,7 +4,6 @@ channels:
   - pytorch
   - nvidia
   - defaults
-channel_priority: strict
 dependencies:
   - python=3.12.12
   - git
@@ -14,4 +13,3 @@ dependencies:
   - ccache
   - c-compiler
   - cxx-compiler
-  - conda-forge::aria2

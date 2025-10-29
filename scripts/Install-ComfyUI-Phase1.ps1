@@ -194,7 +194,15 @@ if ($RunAdminTasks) {
     Invoke-AndLog "$condaExe" "tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main"
 	Invoke-AndLog "$condaExe" "tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r"
 	Invoke-AndLog "$condaExe" "tos accept --override-channels --channel https://repo.anaconda.com/pkgs/msys2"
-
+	Write-Log "Installing aria2 via winget (system-wide)..." -Level 1
+    # Vérifie si winget existe
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        # Installe aria2. L'option -e signifie "exact match"
+        Invoke-AndLog "winget" "install -e --id Aria2.Aria2 --accept-source-agreements --accept-package-agreements"
+    } else {
+        Write-Log "AVERTISSEMENT: 'winget' n'est pas trouvé. Impossible d'installer aria2 automatiquement." -Level 1 -Color Yellow
+        Write-Log "Les téléchargements seront plus lents (Invoke-WebRequest)." -Level 2
+    }
     $envExistsResult = Invoke-AndLog "$condaExe" "env list" -IgnoreErrors
     $envExists = $envExistsResult -match '\bUmeAiRT\b' # Recherche plus précise
 
