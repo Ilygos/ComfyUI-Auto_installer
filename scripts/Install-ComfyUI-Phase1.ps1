@@ -222,17 +222,31 @@ if ($RunAdminTasks) {
     } else {
          Write-Log "aria2c.exe already found at '$aria2InstallPath'." -Level 1 -Color Green
     }
+    # Check if the environment exists
     $envExistsResult = Invoke-AndLog "$condaExe" "env list" -IgnoreErrors
-    $envExists = $envExistsResult -match '\bUmeAiRT\b' # Recherche plus précise
+    $envExists = $envExistsResult -match '\bUmeAiRT\b' # More precise search
 
-    if (-not $envExists) {
-        Write-Log "Creating Conda environment 'UmeAiRT' from '$scriptPath\environment.yml'..." -Level 1
-        Invoke-AndLog "$condaExe" "env create -f `"$scriptPath\environment.yml`""
-    } else { Write-Log "Conda environment 'UmeAiRT' already exists" -Level 1 -Color Green }
+    if ($envExists) {
+        Write-Log "Conda environment 'UmeAiRT' already exists. Removing for a clean install..." -Level 1 -Color Yellow
+        # Add -y to auto-confirm the removal
+        Invoke-AndLog "$condaExe" "env remove -n UmeAiRT -y"
+    } 
+    
+    # Always create the environment after the check/removal
+    Write-Log "Creating Conda environment 'UmeAiRT' from '$scriptPath\environment.yml'..." -Level 1
+    Invoke-AndLog "$condaExe" "env create -f `"$scriptPath\environment.yml`""
+
+    # Verify that the environment was created successfully
+    $envExistsResultAfter = Invoke-AndLog "$condaExe" "env list" -IgnoreErrors
+    if (-not ($envExistsResultAfter -match '\bUmeAiRT\b')) {
+        Write-Log "FATAL ERROR: Conda environment creation failed. Check logs." -Color Red
+        Read-Host "Press Enter to exit."
+        exit 1
+    }
 
     # --- Lancement Phase 2 ---
-    Write-Log "Environnement Conda prêt." -Level 1 -Color Green
-    Write-Log "Lancement de la Phase 2 de l'installation..." -Level 0 # Étape 2/2
+    Write-Log "Conda environment ready." -Level 1 -Color Green
+    Write-Log "Phase 2 of the installation has been launched..." -Level 0 # Étape 2/2
 
     $phase2LauncherPath = Join-Path $scriptPath "Launch-Phase2.bat"
     $phase2ScriptPath = Join-Path $scriptPath "Install-ComfyUI-Phase2.ps1"
@@ -242,25 +256,23 @@ if ($RunAdminTasks) {
 echo Activando entorno UmeAiRT...
 call "$($condaExe -replace 'conda.exe', 'activate.bat')" UmeAiRT
 if %errorlevel% neq 0 (
-    echo ECHEC de l'activation de l'environnement Conda 'UmeAiRT'.
+    echo FAILED to activate the Conda 'UmeAirT' environment.
     pause
     exit /b %errorlevel%
 )
-echo Lancement de la Phase 2 (PowerShell)...
+echo Phase 2 Launch...
 powershell.exe -ExecutionPolicy Bypass -NoProfile -File "$phase2ScriptPath" -InstallPath "$InstallPath"
-echo Fin de la Phase 2. Appuyez sur Entree pour fermer cette fenetre.
+echo End of Phase 2. Press Enter to close this window.
 pause
 "@
-    try { $launcherContent | Out-File -FilePath $phase2LauncherPath -Encoding utf8 -ErrorAction Stop } catch { Write-Log "ERREUR: Impossible de créer '$phase2LauncherPath'." -Color Red; Read-Host "Appuyez sur Entrée."; exit 1 }
+    try { $launcherContent | Out-File -FilePath $phase2LauncherPath -Encoding utf8 -ErrorAction Stop } catch { Write-Log "ERROR: Unable to create '$phase2LauncherPath'." -Color Red; Read-Host "Press Enter."; exit 1 }
 
-    Write-Log "Ouverture d'une nouvelle fenêtre pour la Phase 2..." -Level 2
-    try { Start-Process -FilePath $phase2LauncherPath -Wait -ErrorAction Stop } catch { Write-Log "ERREUR: Impossible de lancer la Phase 2 ($($_.Exception.Message))." -Color Red; Read-Host "Appuyez sur Entrée."; exit 1 }
+    Write-Log "A new window will open for Phase 2..." -Level 2
+    try { Start-Process -FilePath $phase2LauncherPath -Wait -ErrorAction Stop } catch { Write-Log "ERROR: Unable to launch Phase 2 ($($_.Exception.Message))." -Color Red; Read-Host "Press Enter."; exit 1 }
 
     #===========================================================================
-    # FINALIZATION (Phase 1 - Mode Utilisateur)
+    # FINALIZATION 
     #===========================================================================
     Write-Log "-------------------------------------------------------------------------------" -Color Green
-    Write-Log "La Phase 1 est terminée. La Phase 2 s'est exécutée dans une fenêtre séparée." -Color Green
-    # Read-Host commenté car le .bat a son propre 'pause'
-    # Read-Host "Appuyez sur Entrée pour fermer cette fenêtre (Phase 1)." 
+    Write-Log "Phase 1 is complete. Phase 2 was executed in a separate window." -Color Green
 }
