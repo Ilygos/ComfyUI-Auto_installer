@@ -114,8 +114,8 @@ foreach ($wheel in $dependencies.pip_packages.wheels) {
     Remove-Item $wheelPath -ErrorAction SilentlyContinue
 }
 
-Write-Log "Installing pinned version packages..." -Level 1
-Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.pinned -join ' ')"
+#Write-Log "Installing pinned version packages..." -Level 1
+#Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.pinned -join ' ')"
 
 Write-Log "Installing packages from git repositories..." -Level 1
 foreach ($repo in $dependencies.pip_packages.git_repos) {
