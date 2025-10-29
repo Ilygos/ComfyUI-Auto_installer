@@ -154,7 +154,10 @@ $global:currentStep = 2
 $totalCores = [int]$env:NUMBER_OF_PROCESSORS
 $optimalParallelJobs = [int][Math]::Floor(($totalCores * 3) / 4)
 if ($optimalParallelJobs -lt 1) { $optimalParallelJobs = 1 }
-
+Write-Log "Configuring Git to handle long paths (system-wide)..." -Level 1
+# On exécute 'git' directement. L'environnement est déjà activé.
+# --system nécessite que Phase 1 ait été lancée en Admin.
+Invoke-AndLog "git" "config --system core.longpaths true"
 # --- Step 2: Clone ComfyUI ---
 Write-Log "Cloning ComfyUI" -Level 0
 if (-not (Test-Path $comfyPath)) {
