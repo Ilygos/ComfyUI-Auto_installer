@@ -1,9 +1,10 @@
 name: UmeAiRT
 channels:
+  - conda-forge
   - pytorch
   - nvidia
-  - conda-forge
   - defaults
+channel_priority: strict
 dependencies:
   - python=3.12.12
   - git
@@ -13,3 +14,4 @@ dependencies:
   - ccache
   - c-compiler
   - cxx-compiler
+  - conda-forge::aria2

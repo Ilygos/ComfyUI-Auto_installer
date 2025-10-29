@@ -8,7 +8,6 @@ $baseUrl = "https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/feature-conda-
 # Define the list of files to download
 $filesToDownload = @(
     # PowerShell Scripts
-    @{ RepoPath = "scripts/Install-ComfyUI.ps1";         LocalPath = "scripts/Install-ComfyUI.ps1" },
     @{ RepoPath = "scripts/Install-ComfyUI-Phase1.ps1";  LocalPath = "scripts/Install-ComfyUI-Phase1.ps1" },
     @{ RepoPath = "scripts/Install-ComfyUI-Phase2.ps1";  LocalPath = "scripts/Install-ComfyUI-Phase2.ps1" },
     @{ RepoPath = "scripts/Update-ComfyUI.ps1";          LocalPath = "scripts/Update-ComfyUI.ps1" },

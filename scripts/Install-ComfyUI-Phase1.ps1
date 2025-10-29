@@ -39,78 +39,7 @@ function Test-IsAdmin {
     } catch { return $false } # En cas d'erreur, suppose qu'on n'est pas admin
 }
 
-# --- Définition des fonctions Write-Log, Invoke-AndLog, Download-File ---
-# (Ces fonctions ne sont utilisées QUE par le mode utilisateur normal)
-
-function Write-Log {
-    param([string]$Message, [int]$Level = 1, [string]$Color = "Default")
-    $prefix = ""
-    $defaultColor = "White"
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    try {
-        switch ($Level) {
-            -2 { $prefix = "" }
-            0 {
-                $global:currentStep++
-                $stepStr = "[Step $($global:currentStep)/$($global:totalSteps)]"
-                $wrappedMessage = "| $stepStr $Message |"
-                $separator = "=" * ($wrappedMessage.Length)
-                $consoleMessage = "`n$separator`n$wrappedMessage`n$separator"
-                $logMessage = "[$timestamp] $stepStr $Message"
-                $defaultColor = "Yellow"
-            }
-            1 { $prefix = "  - " }
-            2 { $prefix = "    -> " }
-            3 { $prefix = "      [INFO] " }
-        }
-        if ($Color -eq "Default") { $Color = $defaultColor }
-        if ($Level -ne 0) {
-            $logMessage = "[$timestamp] $($prefix.Trim()) $Message"
-            $consoleMessage = "$prefix$Message"
-        }
-        Write-Host $consoleMessage -ForegroundColor $Color
-        Add-Content -Path $logFile -Value $logMessage -ErrorAction SilentlyContinue # Tente d'écrire, ignore si échec (ex: droits)
-    } catch {
-        Write-Host "Erreur interne dans Write-Log: $($_.Exception.Message)" -ForegroundColor Red
-    }
-}
-
-function Invoke-AndLog {
-    param( [string]$File, [string]$Arguments, [switch]$IgnoreErrors )
-    $tempLogFile = Join-Path $env:TEMP ([System.Guid]::NewGuid().ToString() + ".tmp")
-    try {
-        Write-Log "Executing: $File $Arguments" -Level 3 -Color DarkGray
-        $CommandToRun = "& `"$File`" $Arguments *>&1 | Out-File -FilePath `"$tempLogFile`" -Encoding utf8"
-        Invoke-Expression $CommandToRun
-        $output = if (Test-Path $tempLogFile) { Get-Content $tempLogFile } else { @() }
-        if ($LASTEXITCODE -ne 0 -and -not $IgnoreErrors) {
-            Write-Log "ERREUR: La commande a échoué avec le code $LASTEXITCODE." -Color Red
-            Write-Log "Commande: $File $Arguments" -Color Red
-            Write-Log "Sortie de l'erreur:" -Color Red
-            $output | ForEach-Object { Write-Host $_ -ForegroundColor Red; Add-Content -Path $logFile -Value $_ -ErrorAction SilentlyContinue }
-            throw "L'exécution de la commande a échoué. Vérifiez les logs."
-        } else { Add-Content -Path $logFile -Value $output -ErrorAction SilentlyContinue }
-    } catch {
-        $errMsg = "ERREUR FATALE lors de la tentative d'exécution: $File $Arguments. Erreur: $($_.Exception.Message)"
-        Write-Log $errMsg -Color Red
-        Add-Content -Path $logFile -Value $errMsg -ErrorAction SilentlyContinue
-        Read-Host "Une erreur fatale est survenue. Appuyez sur Entrée pour quitter."
-        exit 1
-    } finally { if (Test-Path $tempLogFile) { Remove-Item $tempLogFile -ErrorAction SilentlyContinue } }
-}
-
-function Download-File {
-    param([string]$Uri, [string]$OutFile)
-    Write-Log "Downloading `"$($Uri.Split('/')[-1])`"" -Level 2 -Color DarkGray
-    try {
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing -ErrorAction Stop
-        Write-Log "Download successful." -Level 3
-    } catch {
-        Write-Log "ERREUR: Download failed for '$Uri'. Error: $($_.Exception.Message)" -Color Red
-        throw "Download failed."
-    }
-}
+Import-Module (Join-Path $PSScriptRoot "UmeAiRTUtils.psm1") -Force
 
 #===========================================================================
 # SECTION 2: MAIN SCRIPT EXECUTION
@@ -242,8 +171,8 @@ if ($RunAdminTasks) {
 '@
     Write-Host $asciiBanner -ForegroundColor Cyan
     Write-Host "-------------------------------------------------------------------------------"
-    Write-Host "                           ComfyUI - Auto-Installer (Phase 1)                   " -ForegroundColor Yellow
-    Write-Host "                                  Version 3.2                                  " -ForegroundColor White
+    Write-Host "                           ComfyUI - Auto-Installer                            " -ForegroundColor Yellow
+    Write-Host "                                  Version 4.0                                  " -ForegroundColor White
     Write-Host "-------------------------------------------------------------------------------"
 
 

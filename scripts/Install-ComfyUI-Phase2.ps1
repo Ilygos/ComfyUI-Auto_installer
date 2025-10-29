@@ -14,6 +14,7 @@ param(
     [string]$InstallPath = (Split-Path -Path $PSScriptRoot -Parent)
 )
 $comfyPath = Join-Path $InstallPath "ComfyUI"
+$comfyUserPath = Join-Path $comfyPath "user"
 $scriptPath = Join-Path $InstallPath "scripts"
 $condaPath = Join-Path $env:LOCALAPPDATA "Miniconda3"
 $condaExe = Join-Path $condaPath "Scripts\conda.exe"
@@ -26,123 +27,7 @@ if (-not (Test-Path $dependenciesFile)) { Write-Host "FATAL: dependencies.json n
 $dependencies = Get-Content -Raw -Path $dependenciesFile | ConvertFrom-Json
 if (-not (Test-Path $logPath)) { New-Item -ItemType Directory -Force -Path $logPath | Out-Null }
 
-function Write-Log {
-    param([string]$Message, [int]$Level = 1, [string]$Color = "Default")
-    $prefix = ""
-    $defaultColor = "White"
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    switch ($Level) {
-        -2 { $prefix = "" }
-        0 {
-            $global:currentStep++
-            $wrappedMessage = "| [Step $($global:currentStep)/$($global:totalSteps)] $Message |"
-            $separator = "=" * ($wrappedMessage.Length)
-            $consoleMessage = "`n$separator`n$wrappedMessage`n$separator"
-            $logMessage = "[$timestamp] [Step $($global:currentStep)/$($global:totalSteps)] $Message"
-            $defaultColor = "Yellow"
-        }
-        1 { $prefix = "  - " }
-        2 { $prefix = "    -> " }
-        3 { $prefix = "      [INFO] " }
-    }
-    if ($Color -eq "Default") { $Color = $defaultColor }
-    if ($Level -ne 0) {
-        $logMessage = "[$timestamp] $($prefix.Trim()) $Message"
-        $consoleMessage = "$prefix$Message"
-    }
-    Write-Host $consoleMessage -ForegroundColor $Color
-    Add-Content -Path $logFile -Value $logMessage
-}
-
-function Invoke-AndLog {
-    param(
-        [string]$File,
-        [string]$Arguments,
-        [switch]$IgnoreErrors
-    )
-    
-    # Chemin vers un fichier log temporaire unique.
-    $tempLogFile = Join-Path $env:TEMP ([System.Guid]::NewGuid().ToString() + ".tmp")
-
-    try {
-        Write-Log "Executing: $File $Arguments" -Level 3 -Color DarkGray
-
-        # CONSTRUIT la chaîne de commande complète pour Invoke-Expression.
-        # Nous mettons $File entre guillemets (au cas où il contiendrait des espaces)
-        # et nous laissons $Arguments tel quel pour que PowerShell puisse l'analyser.
-        # Tous les flux (*>&1) sont redirigés vers le fichier temporaire.
-        $CommandToRun = "& `"$File`" $Arguments *>&1 | Out-File -FilePath `"$tempLogFile`" -Encoding utf8"
-        
-        # EXÉCUTE la chaîne de commande
-        Invoke-Expression $CommandToRun
-        
-        # Lit le fichier temporaire.
-        $output = if (Test-Path $tempLogFile) { Get-Content $tempLogFile } else { @() }
-        
-        # Vérifie le code de sortie du processus natif
-        if ($LASTEXITCODE -ne 0 -and -not $IgnoreErrors) {
-            Write-Log "ERREUR: La commande a échoué avec le code $LASTEXITCODE." -Color Red
-            Write-Log "Commande: $File $Arguments" -Color Red
-            Write-Log "Sortie de l'erreur:" -Color Red
-            
-            # Affiche l'erreur dans la console ET dans le log
-            $output | ForEach-Object {
-                Write-Host $_ -ForegroundColor Red
-                Add-Content -Path $logFile -Value $_
-            }
-            
-            # Arrête le script
-            throw "L'exécution de la commande a échoué. Vérifiez les logs."
-        } else {
-            # Si tout va bien, ajoute la sortie au log principal
-            Add-Content -Path $logFile -Value $output
-        }
-
-    } catch {
-        # Cela attrape le 'throw' ci-dessus ou une erreur PowerShell
-        Write-Log "ERREUR FATALE lors de la tentative d'exécution: $File $Arguments" -Color Red
-        $errorMsg = $_ | Out-String
-        Write-Log $errorMsg -Color Red
-        Add-Content -Path $logFile -Value $errorMsg
-        
-        # Stoppe le script et attend que l'utilisateur lise l'erreur
-        Read-Host "Une erreur fatale est survenue. Appuyez sur Entrée pour quitter."
-        exit 1
-    } finally {
-        # S'assure que le fichier temporaire est toujours supprimé.
-        if (Test-Path $tempLogFile) {
-            Remove-Item $tempLogFile -ErrorAction SilentlyContinue
-        }
-    }
-}
-
-function Download-File {
-    param([string]$Uri, [string]$OutFile)
-    
-    Write-Log "Downloading `"$($Uri.Split('/')[-1])`"" -Level 2 -Color DarkGray
-    
-    # Vérifie si aria2c est disponible (il devrait être dans le PATH de Conda)
-    $aria2 = Get-Command aria2c -ErrorAction SilentlyContinue
-    
-    if ($null -ne $aria2) {
-        # --- Solution Rapide : Utiliser Aria2 ---
-        Write-Log "Using aria2c for accelerated download..." -Level 3
-        $OutDir = Split-Path -Path $OutFile -Parent
-        $OutName = Split-Path -Path $OutFile -Leaf
-        
-        # Arguments Aria2 optimisés pour le silence et la vitesse
-        $aria2Args = "--console-log-level=warn --quiet=true -x 16 -s 16 -k 1M --dir=`"$OutDir`" --out=`"$OutName`" `"$Uri`""
-        
-        # Appelle aria2c directement (il est dans le PATH)
-        Invoke-AndLog "aria2c" $aria2Args
-    }
-    else {
-        # --- Solution Lente (Fallback) : Utiliser PowerShell ---
-        Write-Log "aria2c not found, using slower Invoke-WebRequest..." -Level 3
-        Invoke-AndLog "powershell.exe" "-NoProfile -Command `"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '$Uri' -OutFile '$OutFile'`""
-    }
-}
-
+Import-Module (Join-Path $PSScriptRoot "UmeAiRTUtils.psm1") -Force
 
 #===========================================================================
 # SECTION 2: MAIN SCRIPT EXECUTION
@@ -171,6 +56,8 @@ if (-not (Test-Path $comfyPath)) {
 } else {
     Write-Log "ComfyUI directory already exists" -Level 1 -Color Green
 }
+
+if (-not (Test-Path $comfyUserPath)) { New-Item -ItemType Directory -Force -Path $comfyUserPath | Out-Null }
 
 # --- Step 3: Install Core Dependencies ---
 Write-Log "Installing Core Dependencies" -Level 0

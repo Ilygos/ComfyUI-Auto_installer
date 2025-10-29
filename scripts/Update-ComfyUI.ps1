@@ -35,68 +35,8 @@ $dependencies = Get-Content -Raw -Path $dependenciesFile | ConvertFrom-Json
 if (-not (Test-Path $logPath)) { New-Item -ItemType Directory -Force -Path $logPath | Out-Null }
 
 # --- Helper Functions ---
-function Write-Log {
-    param([string]$Message, [string]$Color = "White")
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $formattedMessage = "[$timestamp] $Message"
-    Write-Host $Message -ForegroundColor $Color
-    Add-Content -Path $logFile -Value $formattedMessage
-}
+Import-Module (Join-Path $PSScriptRoot "UmeAiRTUtils.psm1") -Force
 
-function Invoke-AndLog {
-    param(
-        [string]$File,
-        [string]$Arguments
-    )
-    $tempLogFile = Join-Path $env:TEMP ([System.Guid]::NewGuid().ToString() + ".tmp")
-    try {
-        $commandToRun = "`"$File`" $Arguments"
-        $cmdArguments = "/C `"$commandToRun > `"`"$tempLogFile`"`" 2>&1`""
-        Start-Process -FilePath "cmd.exe" -ArgumentList $cmdArguments -Wait -WindowStyle Hidden
-        if (Test-Path $tempLogFile) {
-            $output = Get-Content $tempLogFile
-            Add-Content -Path $logFile -Value $output
-        }
-    } catch {
-        Write-Log "FATAL ERROR trying to execute command: $commandToRun" -Color Red
-    } finally {
-        if (Test-Path $tempLogFile) {
-            Remove-Item $tempLogFile
-        }
-    }
-}
-
-function Invoke-Conda-Command {
-    param(
-        [string]$Command,
-        [string]$Arguments
-    )
-    $condaRun = Join-Path $condaPath "Scripts\conda-run.exe"
-    Invoke-AndLog $condaRun "-n UmeAiRT $Command $Arguments"
-}
-
-function Invoke-Git-Pull {
-    param([string]$DirectoryPath)
-    if (Test-Path (Join-Path $DirectoryPath ".git")) {
-        Write-Log "    - Updating $($DirectoryPath)..."
-        Invoke-Conda-Command "git" "-C `"$DirectoryPath`" pull"
-    } else {
-        Write-Log "    - Skipping: Not a git repository." -Color Gray
-    }
-}
-
-function Invoke-Pip-Install {
-    param([string]$RequirementsPath)
-    if (Test-Path $RequirementsPath) {
-        Write-Log "  - Found requirements: $RequirementsPath. Updating..." -Color Cyan
-        Invoke-Conda-Command "python" "-m pip install -r `"$RequirementsPath`""
-    }
-}
-function Download-File {
-    param([string]$Uri, [string]$OutFile)
-    Write-Log "Downloading `"$($Uri.Split('/')[-1])`"" -Color DarkGray
-    Invoke-AndLog "powershell.exe" "-NoProfile -Command `"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '$Uri' -OutFile '$OutFile'`""
-}
 #===========================================================================
 # SECTION 2: UPDATE PROCESS
 #===========================================================================
