@@ -2,8 +2,8 @@
 echo Activating Conda environment...
 
 REM Activates the Conda environment.
-call "%~dp0Miniconda3\Scripts\activate.bat"
-conda activate UmeAiRT
+call "%LOCALAPPDATA%\Miniconda3\Scripts\activate.bat"
+call conda activate UmeAiRT
 
 echo Starting ComfyUI with custom arguments...
 

@@ -26,7 +26,7 @@
     "comfyui_requirements": "requirements.txt",
     "wheels": [
       {
-        "name": "nunchaku-1.0.0+torch2.8-cp312-cp312-win_amd64.whl",
+        "name": "nunchaku-1.0.0+torch2.8-cp312-cp312-win_amd64",
         "url": "https://github.com/nunchaku-tech/nunchaku/releases/download/v1.0.0/nunchaku-1.0.0+torch2.8-cp312-cp312-win_amd64.whl"
       },
       {
