@@ -43,7 +43,7 @@ if ($RunAdminTasks) {
     Write-Host "`n=== Performing Administrator Tasks ===`n" -ForegroundColor Cyan
 
     # Tâche 1 : Chemins Longs
-    Write-Host "[Admin Task 1/3] Enabling support for long paths (Registry)..." -ForegroundColor Yellow
+    Write-Host "[Admin Task 1/2] Enabling support for long paths (Registry)..." -ForegroundColor Yellow
     $regPath = "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem"; $regKey = "LongPathsEnabled"
     try {
         if ((Get-ItemPropertyValue -Path $regPath -Name $regKey -ErrorAction SilentlyContinue) -ne 1) {
@@ -53,7 +53,7 @@ if ($RunAdminTasks) {
     } catch { Write-Host "- ERROR: Unable to enable long paths. $_" -ForegroundColor Red }
 
     # Tâche 2 : VS Build Tools
-    Write-Host "[Admin Task 2/3] Checking/Installing VS Build Tools..." -ForegroundColor Yellow
+    Write-Host "[Admin Task 2/2] Checking/Installing VS Build Tools..." -ForegroundColor Yellow
     $depFileAdmin = Join-Path $scriptPath "dependencies.json" # Re-détermine le chemin
     $vsToolAdmin = $null
     if (Test-Path $depFileAdmin) {
@@ -78,16 +78,6 @@ if ($RunAdminTasks) {
         } else { Write-Host "- VS Build Tools already installed." -ForegroundColor Green }
     } else { Write-Host "- ERROR: Unable to find VS Build Tools information in '$depFileAdmin'." -ForegroundColor Red }
 
-    # Tâche 3 : Git Config System
-    Write-Host "[Admin Task 3/3] Configuring Git (system) for long paths..." -ForegroundColor Yellow
-    $gitExeAdmin = Get-Command git -ErrorAction SilentlyContinue
-    if ($gitExeAdmin) {
-        try {
-            Start-Process $gitExeAdmin.Source -ArgumentList "config --system core.longpaths true" -Wait -NoNewWindow -ErrorAction Stop
-            Write-Host "- Git --system configuration complete." -ForegroundColor Green
-        } catch { Write-Host "- ERROR during Git configuration --system: $($_.Exception.Message)" -ForegroundColor Red }
-    } else { Write-Host "- WARNING: 'git' not found in the PATH. Unable to configure --system core.longpaths." -ForegroundColor Yellow }
-
     Write-Host "`n=== Administrative tasks completed. Closing this window. ===" -ForegroundColor Green
     Start-Sleep -Seconds 3 # Laisse le temps de lire
     exit 0 # <<<=== QUITTER LE SCRIPT ADMIN ICI
@@ -109,16 +99,6 @@ if ($RunAdminTasks) {
             Write-Log "VS Build Tools must be installed (Admin required)." -Level 2 -Color Yellow; $needsElevation = $true
         } else { Write-Log "VS Build Tools OK." -Level 2 -Color Green }
     } else { Write-Log "WARNING: Unable to verify VS Build Tools. Elevation may be required." -Level 2 -Color Yellow; $needsElevation = $true }
-    # Git Config System
-    $gitExeUser = Get-Command git -ErrorAction SilentlyContinue
-    $gitLongPathsSystemEnabled = $false
-    if ($gitExeUser) {
-        $gitConfigOutput = Invoke-Expression "$($gitExeUser.Source) config --system core.longpaths" 2>$null
-        if ($LASTEXITCODE -eq 0 -and $gitConfigOutput -match 'true') { $gitLongPathsSystemEnabled = $true }
-    }
-    if (-not $gitLongPathsSystemEnabled) {
-         Write-Log "The Git configuration (--system core.longpaths) must be enabled (Admin required)." -Level 2 -Color Yellow; $needsElevation = $true
-    } else { Write-Log "Config Git system OK." -Level 2 -Color Green }
 
     # Si l'élévation est nécessaire ET qu'on n'est pas déjà admin
     if ($needsElevation -and -not (Test-IsAdmin)) {
