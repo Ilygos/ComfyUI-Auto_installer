@@ -2,20 +2,9 @@
 setlocal
 
 :: ============================================================================
-:: Section 1: Checking and requesting administrator privileges
-:: ============================================================================
-net session >nul 2>&1
-if %errorlevel% NEQ 0 (
-    echo [INFO] Requesting administrator privileges for the updater...
-    powershell.exe -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
-    exit /b
-)
-
-:: ============================================================================
-:: Section 2: Bootstrap downloader for all scripts
+:: Section 1: Bootstrap downloader for all scripts
 :: ============================================================================
 title UmeAiRT ComfyUI Updater
-echo [OK] Administrator privileges confirmed.
 echo.
 
 :: Create a "clean" path variable without the trailing backslash
@@ -43,7 +32,7 @@ echo [OK] All scripts are now up-to-date.
 echo.
 
 :: ============================================================================
-:: Section 3: Running the main update script
+:: Section 2: Running the main update script
 :: ============================================================================
 echo [INFO] Launching the main update script...
 echo.

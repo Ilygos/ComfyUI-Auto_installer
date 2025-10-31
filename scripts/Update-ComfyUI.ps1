@@ -1,14 +1,3 @@
-#Requires -RunAsAdministrator
-
-<#
-.SYNOPSIS
-    A dedicated update script for the ComfyUI installation.
-.DESCRIPTION
-    This script performs a 'git pull' on the main ComfyUI repository,
-    all custom nodes, and the workflow repository. It then updates all
-    Python dependencies from any found 'requirements.txt' files and
-    ensures pinned packages are at the correct version.
-#>
 
 #===========================================================================
 # SECTION 1: SCRIPT CONFIGURATION & HELPER FUNCTIONS
@@ -52,35 +41,43 @@ Invoke-Git-Pull -DirectoryPath $comfyPath
 Write-Log "  - Updating UmeAiRT Workflows..."
 Invoke-Git-Pull -DirectoryPath $workflowPath
 
-# --- 2. Update and Install Custom Nodes ---
-Write-Log "`n[2/3] Updating and Installing Custom Nodes..." -Color Green
+# --- 2. Update and Install Custom Nodes & Dependencies ---
+Write-Log "`n[2/3] Updating/Installing Custom Nodes & Dependencies..." -Color Green
 $csvUrl = $dependencies.files.custom_nodes_csv.url
 $csvPath = Join-Path $InstallPath "scripts\custom_nodes.csv"
-
-# Download the latest list of custom nodes
-try {
-    Download-File -Uri $csvUrl -OutFile $csvPath
-} catch {
-    Write-Log "  - ERROR: Could not download the custom nodes list. Skipping node updates." -Color Red
-    return
-}
-
-# Update existing nodes
-Write-Log "  - Updating existing custom nodes..."
-Get-ChildItem -Path $customNodesPath -Directory | ForEach-Object {
-    Invoke-Git-Pull -DirectoryPath $_.FullName
-}
-
-# Check for and install new nodes
-Write-Log "  - Checking for new nodes to install..."
 $customNodesList = Import-Csv -Path $csvPath
+
+Write-Log "  - Checking all nodes based on custom_nodes.csv..."
+
 foreach ($node in $customNodesList) {
     $nodeName = $node.Name
+    $repoUrl = $node.RepoUrl
     $nodePath = if ($node.Subfolder) { Join-Path $customNodesPath $node.Subfolder } else { Join-Path $customNodesPath $nodeName }
 
-    if (-not (Test-Path $nodePath)) {
+    # Étape 1 : Mettre à jour ou Installer
+    if (Test-Path $nodePath) {
+        # Le nœud existe -> Mise à jour
+        Write-Log "    - Updating $nodeName..." -Color Cyan
+        Invoke-Git-Pull -DirectoryPath $nodePath
+    } else {
+        # Le nœud n'existe pas -> Installation
         Write-Log "    - New node found: $nodeName. Installing..." -Color Yellow
-        Invoke-AndLog "git" "clone $($node.RepoUrl) `"$nodePath`""
+        Invoke-AndLog "git" "clone $repoUrl `"$nodePath`""
+    }
+
+    # Étape 2 : Gérer les dépendances
+    if (Test-Path $nodePath) {
+        if ($node.RequirementsFile) {
+            $reqPath = Join-Path $nodePath $node.RequirementsFile
+            
+            if (Test-Path $reqPath) {
+                Write-Log "    - Checking requirements for $nodeName (from '$($node.RequirementsFile)')"
+                
+                # Le hack 'cupy' est supprimé, comme vous l'avez dit.
+                
+                Invoke-Pip-Install -RequirementsPath $reqPath
+            }
+        }
     }
 }
 
@@ -88,26 +85,6 @@ foreach ($node in $customNodesList) {
 Write-Log "`n[3/3] Updating all Python dependencies..." -Color Green
 Write-Log "  - Checking main ComfyUI requirements..."
 Invoke-Pip-Install -RequirementsPath (Join-Path $comfyPath "requirements.txt")
-
-Write-Log "  - Checking custom node requirements..."
-Get-ChildItem -Path $customNodesPath -Directory -Recurse | ForEach-Object {
-    $reqFile = Join-Path $_.FullName "requirements.txt"
-    # Also check for common variations of the requirements file name
-    $reqFileWithCupy = Join-Path $_.FullName "requirements-with-cupy.txt"
-    if (Test-Path $reqFile) {
-        Invoke-Pip-Install -RequirementsPath $reqFile
-    }
-    if (Test-Path $reqFileWithCupy) {
-        Invoke-Pip-Install -RequirementsPath $reqFileWithCupy
-    }
-}
-
-# Reinstall pinned packages to ensure correct versions
-Write-Log "  - Ensuring pinned packages are at the correct version..."
-$pinnedPackages = $dependencies.pip_packages.pinned -join " "
-if ($pinnedPackages) {
-    Invoke-Conda-Command "python" "-m pip install --force-reinstall $pinnedPackages"
-}
 
 # Reinstall wheel packages to ensure correct versions from JSON
 Write-Log "  - Ensuring wheel packages are at the correct version..."
@@ -124,7 +101,7 @@ foreach ($wheel in $dependencies.pip_packages.wheels) {
 
         # Force reinstall the downloaded wheel
         if (Test-Path $localWheelPath) {
-            Invoke-Conda-Command "python" "-m pip install `"$localWheelPath`""
+            Invoke-Conda-Command "python" "-m pip install --upgrade --force-reinstall `"$localWheelPath`""
         } else {
             Write-Log "      - ERROR: Failed to download $wheelName" -Color Red
         }
