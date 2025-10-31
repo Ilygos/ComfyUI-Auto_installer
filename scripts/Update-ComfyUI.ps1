@@ -1,4 +1,3 @@
-
 #===========================================================================
 # SECTION 1: SCRIPT CONFIGURATION & HELPER FUNCTIONS
 #===========================================================================
@@ -8,7 +7,8 @@ $InstallPath = (Split-Path -Path $PSScriptRoot -Parent)
 $comfyPath = Join-Path $InstallPath "ComfyUI"
 $customNodesPath = Join-Path $InstallPath "custom_nodes"
 $workflowPath = Join-Path $InstallPath "user\default\workflows\UmeAiRT-Workflow"
-$condaPath = Join-Path $InstallPath "Miniconda3"
+# [CORRECTIF] Utilise le chemin %LOCALAPPDATA% comme dans le script d'installation
+$condaPath = Join-Path $env:LOCALAPPDATA "Miniconda3"
 $logPath = Join-Path $InstallPath "logs"
 $logFile = Join-Path $logPath "update_log.txt"
 
@@ -25,6 +25,8 @@ if (-not (Test-Path $logPath)) { New-Item -ItemType Directory -Force -Path $logP
 
 # --- Helper Functions ---
 Import-Module (Join-Path $PSScriptRoot "UmeAiRTUtils.psm1") -Force
+# Définit la variable logFile globale pour que le module utilitaire puisse l'utiliser
+$global:logFile = $logFile
 
 #===========================================================================
 # SECTION 2: UPDATE PROCESS
@@ -37,9 +39,11 @@ Write-Log "=====================================================================
 # --- 1. Update Git Repositories ---
 Write-Log "`n[1/3] Updating all Git repositories..." -Color Green
 Write-Log "  - Updating ComfyUI Core..."
-Invoke-Git-Pull -DirectoryPath $comfyPath
+# [CORRECTIF] Remplacement de Invoke-Git-Pull par Invoke-AndLog
+Invoke-AndLog "git" "-C `"$comfyPath`" pull"
 Write-Log "  - Updating UmeAiRT Workflows..."
-Invoke-Git-Pull -DirectoryPath $workflowPath
+# [CORRECTIF] Remplacement de Invoke-Git-Pull par Invoke-AndLog
+Invoke-AndLog "git" "-C `"$workflowPath`" pull"
 
 # --- 2. Update and Install Custom Nodes & Dependencies ---
 Write-Log "`n[2/3] Updating/Installing Custom Nodes & Dependencies..." -Color Green
@@ -58,7 +62,8 @@ foreach ($node in $customNodesList) {
     if (Test-Path $nodePath) {
         # Le nœud existe -> Mise à jour
         Write-Log "    - Updating $nodeName..." -Color Cyan
-        Invoke-Git-Pull -DirectoryPath $nodePath
+        # [CORRECTIF] Remplacement de Invoke-Git-Pull par Invoke-AndLog
+        Invoke-AndLog "git" "-C `"$nodePath`" pull"
     } else {
         # Le nœud n'existe pas -> Installation
         Write-Log "    - New node found: $nodeName. Installing..." -Color Yellow
@@ -73,9 +78,8 @@ foreach ($node in $customNodesList) {
             if (Test-Path $reqPath) {
                 Write-Log "    - Checking requirements for $nodeName (from '$($node.RequirementsFile)')"
                 
-                # Le hack 'cupy' est supprimé, comme vous l'avez dit.
-                
-                Invoke-Pip-Install -RequirementsPath $reqPath
+                # [CORRECTIF] Remplacement de Invoke-Pip-Install par Invoke-AndLog
+                Invoke-AndLog "python" "-m pip install -r `"$reqPath`""
             }
         }
     }
@@ -84,7 +88,9 @@ foreach ($node in $customNodesList) {
 # --- 3. Update Python Dependencies ---
 Write-Log "`n[3/3] Updating all Python dependencies..." -Color Green
 Write-Log "  - Checking main ComfyUI requirements..."
-Invoke-Pip-Install -RequirementsPath (Join-Path $comfyPath "requirements.txt")
+# [CORRECTIF] Remplacement de Invoke-Pip-Install par Invoke-AndLog
+$mainReqs = Join-Path $comfyPath "requirements.txt"
+Invoke-AndLog "python" "-m pip install -r `"$mainReqs`""
 
 # Reinstall wheel packages to ensure correct versions from JSON
 Write-Log "  - Ensuring wheel packages are at the correct version..."
@@ -96,12 +102,13 @@ foreach ($wheel in $dependencies.pip_packages.wheels) {
     Write-Log "    - Processing wheel: $wheelName" -Color Cyan
 
     try {
-        # Download the wheel file
+        # Download the wheel file (utilise la fonction de UmeAiRTUtils.psm1)
         Download-File -Uri $wheelUrl -OutFile $localWheelPath
 
         # Force reinstall the downloaded wheel
         if (Test-Path $localWheelPath) {
-            Invoke-Conda-Command "python" "-m pip install --upgrade --force-reinstall `"$localWheelPath`""
+            # [CORRECTIF] Remplacement de Invoke-Conda-Command par Invoke-AndLog
+            Invoke-AndLog "python" "-m pip install --upgrade --force-reinstall `"$localWheelPath`""
         } else {
             Write-Log "      - ERROR: Failed to download $wheelName" -Color Red
         }
