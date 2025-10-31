@@ -34,7 +34,7 @@ Write-Log "DEBUG: Loaded tools config: $($dependencies.tools | ConvertTo-Json -D
 #===========================================================================
 # SECTION 2: MAIN SCRIPT EXECUTION
 #===========================================================================
-$global:totalSteps = 8
+$global:totalSteps = 11
 $global:currentStep = 2
 $totalCores = [int]$env:NUMBER_OF_PROCESSORS
 $optimalParallelJobs = [int][Math]::Floor(($totalCores * 3) / 4)
@@ -75,6 +75,7 @@ Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.standard -jo
 
 # --- Step 5: Install Custom Nodes ---
 Write-Log "Installing Custom Nodes" -Level 0
+$csvPath = Join-Path $InstallPath $dependencies.files.custom_nodes_csv.destination
 $customNodes = Import-Csv -Path $csvPath
 $customNodesPath = Join-Path $InstallPath "custom_nodes"
 foreach ($node in $customNodes) {
