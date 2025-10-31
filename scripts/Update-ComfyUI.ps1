@@ -41,7 +41,7 @@ Write-Log "=====================================================================
 
 # --- 1. Update Git Repositories ---
 # [CORRECTIF] Utilisation de Level 0 pour les étapes
-Write-Log "[1/3] Updating all Git repositories..." -Level 0 -Color Green
+Write-Log "Updating all Git repositories..." -Level 0 -Color Green
 # [CORRECTIF] Utilisation de Level 1 pour les sous-tâches
 Write-Log "Updating ComfyUI Core..." -Level 1
 Invoke-AndLog "git" "-C `"$comfyPath`" pull"
@@ -49,7 +49,7 @@ Write-Log "Updating UmeAiRT Workflows..." -Level 1
 Invoke-AndLog "git" "-C `"$workflowPath`" pull"
 
 # --- 2. Update and Install Custom Nodes & Dependencies ---
-Write-Log "[2/3] Updating/Installing Custom Nodes & Dependencies..." -Level 0 -Color Green
+Write-Log "Updating/Installing Custom Nodes & Dependencies..." -Level 0 -Color Green
 $csvUrl = $dependencies.files.custom_nodes_csv.url
 $csvPath = Join-Path $InstallPath "scripts\custom_nodes.csv"
 $customNodesList = Import-Csv -Path $csvPath
@@ -87,7 +87,7 @@ foreach ($node in $customNodesList) {
 }
 
 # --- 3. Update Python Dependencies ---
-Write-Log "[3/3] Updating all Python dependencies..." -Level 0 -Color Green
+Write-Log "Updating all Python dependencies..." -Level 0 -Color Green
 Write-Log "Checking main ComfyUI requirements..." -Level 1
 $mainReqs = Join-Path $comfyPath "requirements.txt"
 Invoke-AndLog "python" "-m pip install -r `"$mainReqs`""
