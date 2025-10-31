@@ -28,7 +28,9 @@ $dependencies = Get-Content -Raw -Path $dependenciesFile | ConvertFrom-Json
 if (-not (Test-Path $logPath)) { New-Item -ItemType Directory -Force -Path $logPath | Out-Null }
 
 Import-Module (Join-Path $PSScriptRoot "UmeAiRTUtils.psm1") -Force
-
+$global:logFile = Join-Path $InstallPath "logs" "install_log_phase2.txt"
+$global:hasGpu = Test-NvidiaGpu
+Write-Log "DEBUG: Loaded tools config: $($dependencies.tools | ConvertTo-Json -Depth 3)" -Level 3
 #===========================================================================
 # SECTION 2: MAIN SCRIPT EXECUTION
 #===========================================================================
@@ -116,20 +118,28 @@ foreach ($wheel in $dependencies.pip_packages.wheels) {
 #Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.pinned -join ' ')"
 
 Write-Log "Installing packages from git repositories..." -Level 1
-foreach ($repo in $dependencies.pip_packages.git_repos) {
-    Write-Log "Installing $($repo.name)..." -Level 2
-    $installUrl = "git+$($repo.url)@$($repo.commit)"
-    $pipArgs = ""
-    if ($repo.name -eq "xformers") {
-        $pipArgs = "-m pip install --no-build-isolation --verbose `"$installUrl`""
-    } elseif ($repo.name -eq "SageAttention") {
-        $pipArgs = "-m pip install --no-build-isolation `"$installUrl`""        
-    } elseif ($repo.name -eq "apex") {
-        $pipArgs = "-m pip install $($repo.install_options) `"$installUrl`""
-    } else {
-        $pipArgs = "-m pip install `"$installUrl`""
+if ($global:hasGpu) {
+    Write-Log "GPU detected, installing GPU-specific repositories (xformers, SageAttention, apex)..." -Level 1
+
+    foreach ($repo in $dependencies.pip_packages.git_repos) {
+        Write-Log "Installing $($repo.name)..." -Level 2
+        $installUrl = "git+$($repo.url)@$($repo.commit)"
+
+        $pipArgs = ""
+        if ($repo.name -eq "xformers") {
+            $pipArgs = "-m pip install --no-build-isolation --verbose `"$installUrl`""
+        } elseif ($repo.name -eq "SageAttention") {
+            $pipArgs = "-m pip install --no-build-isolation `"$installUrl`""
+        } elseif ($repo.name -eq "apex") {
+            $pipArgs = "-m pip install $($repo.install_options) `"$installUrl`""
+        } else {
+            $pipArgs = "-m pip install `"$installUrl`""
+        }
+        Invoke-AndLog "python" $pipArgs
     }
-	Invoke-AndLog "python" $pipArgs
+
+} else {
+    Write-Log "Skipping GPU-specific git repositories as no GPU was found." -Level 1
 }
 
 # --- Step 6: Download Workflows & Settings ---

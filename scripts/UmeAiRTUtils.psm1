@@ -118,6 +118,32 @@ function Ask-Question {
     }
     return $choice
 }
+
+function Test-NvidiaGpu {
+    # This function must be called AFTER the Conda env is activated
+    # (because it relies on nvidia-smi from the cuda-toolkit)
+
+    Write-Log "Checking for NVIDIA GPU..." -Level 1
+    try {
+        # nvidia-smi.exe is available (from conda env)
+        # -L lists GPUs. 2>&1 merges error and output streams.
+        $gpuCheck = & "nvidia-smi" -L 2>&1 | Out-String
+
+        if ($LASTEXITCODE -eq 0 -and $gpuCheck -match 'GPU 0:') {
+            Write-Log "NVIDIA GPU detected." -Level 2 -Color Green
+            Write-Log "$($gpuCheck.Trim())" -Level 3
+            return $true # Return boolean TRUE
+        } else {
+            Write-Log "WARNING: No NVIDIA GPU detected. Skipping GPU-only packages." -Level 1 -Color Yellow
+            Write-Log "nvidia-smi output (for debugging): $gpuCheck" -Level 3
+            return $false # Return boolean FALSE
+        }
+    } catch {
+        Write-Log "WARNING: 'nvidia-smi' command failed. Assuming no GPU." -Level 1 -Color Yellow
+        Write-Log "Error details: $($_.Exception.Message)" -Level 3
+        return $false # Return boolean FALSE
+    }
+}
 # --- FIN DU FICHIER ---
 # Exporte les fonctions pour les rendre disponibles à l'importation
-Export-ModuleMember -Function Write-Log, Invoke-AndLog, Download-File
+Export-ModuleMember -Function Write-Log, Invoke-AndLog, Download-File, Test-NvidiaGpu
