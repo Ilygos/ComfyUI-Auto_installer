@@ -49,11 +49,6 @@ pause
 :: ============================================================================
 :: Section 3: Self-Update (pour gérer le .bat.new)
 :: ============================================================================
-echo [INFO] Checking for updater self-update...
-if exist "%InstallPath%\UmeAiRT-Update-ComfyUI.bat.new" (
-    echo [INFO] Applying updater self-update...
-    :: 'ping' est une astuce pour attendre 1 sec
-    (ping 127.0.0.1 -n 2 > nul) && move /Y "%InstallPath%\UmeAiRT-Update-ComfyUI.bat.new" "%InstallPath%\UmeAiRT-Update-ComfyUI.bat"
-)
+
 
 endlocal
