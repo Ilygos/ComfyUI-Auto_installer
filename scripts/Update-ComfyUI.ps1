@@ -7,7 +7,6 @@ $InstallPath = (Split-Path -Path $PSScriptRoot -Parent)
 $comfyPath = Join-Path $InstallPath "ComfyUI"
 $customNodesPath = Join-Path $InstallPath "custom_nodes"
 $workflowPath = Join-Path $InstallPath "user\default\workflows\UmeAiRT-Workflow"
-# [CORRECTIF] Utilise le chemin %LOCALAPPDATA% comme dans le script d'installation
 $condaPath = Join-Path $env:LOCALAPPDATA "Miniconda3"
 $logPath = Join-Path $InstallPath "logs"
 $logFile = Join-Path $logPath "update_log.txt"
@@ -27,31 +26,35 @@ if (-not (Test-Path $logPath)) { New-Item -ItemType Directory -Force -Path $logP
 Import-Module (Join-Path $PSScriptRoot "UmeAiRTUtils.psm1") -Force
 # Définit la variable logFile globale pour que le module utilitaire puisse l'utiliser
 $global:logFile = $logFile
+# Définit les étapes globales (estimation)
+$global:totalSteps = 3
+$global:currentStep = 0
 
 #===========================================================================
 # SECTION 2: UPDATE PROCESS
 #===========================================================================
 Clear-Host
-Write-Log "==============================================================================="
-Write-Log "             Starting UmeAiRT ComfyUI Update Process" -Color Yellow
-Write-Log "==============================================================================="
+# [CORRECTIF] Utilisation de Level -2 pour les bannières (pas de préfixe)
+Write-Log "===============================================================================" -Level -2
+Write-Log "             Starting UmeAiRT ComfyUI Update Process" -Level -2 -Color Yellow
+Write-Log "===============================================================================" -Level -2
 
 # --- 1. Update Git Repositories ---
-Write-Log "`n[1/3] Updating all Git repositories..." -Color Green
-Write-Log "  - Updating ComfyUI Core..."
-# [CORRECTIF] Remplacement de Invoke-Git-Pull par Invoke-AndLog
+# [CORRECTIF] Utilisation de Level 0 pour les étapes
+Write-Log "[1/3] Updating all Git repositories..." -Level 0 -Color Green
+# [CORRECTIF] Utilisation de Level 1 pour les sous-tâches
+Write-Log "Updating ComfyUI Core..." -Level 1
 Invoke-AndLog "git" "-C `"$comfyPath`" pull"
-Write-Log "  - Updating UmeAiRT Workflows..."
-# [CORRECTIF] Remplacement de Invoke-Git-Pull par Invoke-AndLog
+Write-Log "Updating UmeAiRT Workflows..." -Level 1
 Invoke-AndLog "git" "-C `"$workflowPath`" pull"
 
 # --- 2. Update and Install Custom Nodes & Dependencies ---
-Write-Log "`n[2/3] Updating/Installing Custom Nodes & Dependencies..." -Color Green
+Write-Log "[2/3] Updating/Installing Custom Nodes & Dependencies..." -Level 0 -Color Green
 $csvUrl = $dependencies.files.custom_nodes_csv.url
 $csvPath = Join-Path $InstallPath "scripts\custom_nodes.csv"
 $customNodesList = Import-Csv -Path $csvPath
 
-Write-Log "  - Checking all nodes based on custom_nodes.csv..."
+Write-Log "Checking all nodes based on custom_nodes.csv..." -Level 1
 
 foreach ($node in $customNodesList) {
     $nodeName = $node.Name
@@ -61,12 +64,12 @@ foreach ($node in $customNodesList) {
     # Étape 1 : Mettre à jour ou Installer
     if (Test-Path $nodePath) {
         # Le nœud existe -> Mise à jour
-        Write-Log "    - Updating $nodeName..." -Color Cyan
-        # [CORRECTIF] Remplacement de Invoke-Git-Pull par Invoke-AndLog
+        # [CORRECTIF] Utilisation de Level 2 pour les sous-sous-tâches
+        Write-Log "Updating $nodeName..." -Level 2 -Color Cyan
         Invoke-AndLog "git" "-C `"$nodePath`" pull"
     } else {
         # Le nœud n'existe pas -> Installation
-        Write-Log "    - New node found: $nodeName. Installing..." -Color Yellow
+        Write-Log "New node found: $nodeName. Installing..." -Level 2 -Color Yellow
         Invoke-AndLog "git" "clone $repoUrl `"$nodePath`""
     }
 
@@ -76,9 +79,7 @@ foreach ($node in $customNodesList) {
             $reqPath = Join-Path $nodePath $node.RequirementsFile
             
             if (Test-Path $reqPath) {
-                Write-Log "    - Checking requirements for $nodeName (from '$($node.RequirementsFile)')"
-                
-                # [CORRECTIF] Remplacement de Invoke-Pip-Install par Invoke-AndLog
+                Write-Log "Checking requirements for $nodeName (from '$($node.RequirementsFile)')" -Level 2
                 Invoke-AndLog "python" "-m pip install -r `"$reqPath`""
             }
         }
@@ -86,20 +87,19 @@ foreach ($node in $customNodesList) {
 }
 
 # --- 3. Update Python Dependencies ---
-Write-Log "`n[3/3] Updating all Python dependencies..." -Color Green
-Write-Log "  - Checking main ComfyUI requirements..."
-# [CORRECTIF] Remplacement de Invoke-Pip-Install par Invoke-AndLog
+Write-Log "[3/3] Updating all Python dependencies..." -Level 0 -Color Green
+Write-Log "Checking main ComfyUI requirements..." -Level 1
 $mainReqs = Join-Path $comfyPath "requirements.txt"
 Invoke-AndLog "python" "-m pip install -r `"$mainReqs`""
 
 # Reinstall wheel packages to ensure correct versions from JSON
-Write-Log "  - Ensuring wheel packages are at the correct version..."
+Write-Log "Ensuring wheel packages are at the correct version..." -Level 1
 foreach ($wheel in $dependencies.pip_packages.wheels) {
     $wheelName = $wheel.name
     $wheelUrl = $wheel.url
-    $localWheelPath = Join-Path $env:TEMP $wheelName
+    $localWheelPath = Join-Path $env:TEMP "$($wheelName).whl"
 
-    Write-Log "    - Processing wheel: $wheelName" -Color Cyan
+    Write-Log "Processing wheel: $wheelName" -Level 2 -Color Cyan
 
     try {
         # Download the wheel file (utilise la fonction de UmeAiRTUtils.psm1)
@@ -107,15 +107,13 @@ foreach ($wheel in $dependencies.pip_packages.wheels) {
 
         # Force reinstall the downloaded wheel
         if (Test-Path $localWheelPath) {
-            # [CORRECTIF] Remplacement de Invoke-Conda-Command par Invoke-AndLog
             Invoke-AndLog "python" "-m pip install --upgrade --force-reinstall `"$localWheelPath`""
         } else {
-            Write-Log "      - ERROR: Failed to download $wheelName" -Color Red
+            Write-Log "ERROR: Failed to download $wheelName" -Level 2 -Color Red
         }
     } catch {
-        # On récupère le message d'erreur sur une ligne séparée pour éviter les erreurs de syntaxe
         $errorMessage = $_.Exception.Message
-        Write-Log "      - FATAL ERROR during processing of $wheelName : $errorMessage" -Color Red
+        Write-Log "FATAL ERROR during processing of $wheelName : $errorMessage" -Level 2 -Color Red
     } finally {
         # Clean up the downloaded wheel file
         if (Test-Path $localWheelPath) {
@@ -124,7 +122,7 @@ foreach ($wheel in $dependencies.pip_packages.wheels) {
     }
 }
 
-Write-Log "==============================================================================="
-Write-Log "Update process complete!" -Color Yellow
-Write-Log "==============================================================================="
+Write-Log "===============================================================================" -Level -2
+Write-Log "Update process complete!" -Level -2 -Color Yellow
+Write-Log "===============================================================================" -Level -2
 Read-Host "Press Enter to exit."
