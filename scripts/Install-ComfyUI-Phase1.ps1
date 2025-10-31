@@ -33,16 +33,13 @@ Import-Module (Join-Path $PSScriptRoot "UmeAiRTUtils.psm1") -Force
 #===========================================================================
 # SECTION 2: MAIN SCRIPT EXECUTION
 #===========================================================================
-$global:totalSteps = 2 # Phase 1 = Setup Admin (si besoin) + Setup Conda Env + Lancement Phase 2
+$global:totalSteps = 11 # Phase 1 = Setup Admin (si besoin) + Setup Conda Env + Lancement Phase 2
 $global:currentStep = 0
 
-# --- Logique d'élévation ---
 if ($RunAdminTasks) {
-    # --- Mode Admin : Exécute UNIQUEMENT les tâches admin ---
-    # Utilise Write-Host car Write-Log pourrait ne pas être totalement initialisé ou avoir des pbs de droits
     Write-Host "`n=== Performing Administrator Tasks ===`n" -ForegroundColor Cyan
 
-    # Tâche 1 : Chemins Longs
+    # Tâche 1 : Long paths
     Write-Host "[Admin Task 1/2] Enabling support for long paths (Registry)..." -ForegroundColor Yellow
     $regPath = "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem"; $regKey = "LongPathsEnabled"
     try {
@@ -54,7 +51,7 @@ if ($RunAdminTasks) {
 
     # Tâche 2 : VS Build Tools
     Write-Host "[Admin Task 2/2] Checking/Installing VS Build Tools..." -ForegroundColor Yellow
-    $depFileAdmin = Join-Path $scriptPath "dependencies.json" # Re-détermine le chemin
+    $depFileAdmin = Join-Path $scriptPath "dependencies.json"
     $vsToolAdmin = $null
     if (Test-Path $depFileAdmin) {
         try { $depsAdmin = Get-Content -Raw -Path $depFileAdmin | ConvertFrom-Json } catch { $depsAdmin = $null }
@@ -79,16 +76,13 @@ if ($RunAdminTasks) {
     } else { Write-Host "- ERROR: Unable to find VS Build Tools information in '$depFileAdmin'." -ForegroundColor Red }
 
     Write-Host "`n=== Administrative tasks completed. Closing this window. ===" -ForegroundColor Green
-    Start-Sleep -Seconds 3 # Laisse le temps de lire
-    exit 0 # <<<=== QUITTER LE SCRIPT ADMIN ICI
+    Start-Sleep -Seconds 3
+    exit 0
 
 } else {
-    # --- Mode Utilisateur Normal ---
-
-    # Vérifie si l'élévation est nécessaire
     $needsElevation = $false
     Write-Log "Checking for prerequisites that may require admin rights..." -Level 1
-    # Chemins longs
+    # Long paths
     if ((Get-ItemPropertyValue -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -ErrorAction SilentlyContinue) -ne 1) {
         Write-Log "Long path support must be enabled (Admin required)." -Level 2 -Color Yellow; $needsElevation = $true
     } else { Write-Log "Long path support OK." -Level 2 -Color Green }
@@ -100,7 +94,6 @@ if ($RunAdminTasks) {
         } else { Write-Log "VS Build Tools OK." -Level 2 -Color Green }
     } else { Write-Log "WARNING: Unable to verify VS Build Tools. Elevation may be required." -Level 2 -Color Yellow; $needsElevation = $true }
 
-    # Si l'élévation est nécessaire ET qu'on n'est pas déjà admin
     if ($needsElevation -and -not (Test-IsAdmin)) {
         Write-Host "`nAdministrator privileges are required for initial setup." -ForegroundColor Yellow
         Write-Host "Re-running part of the script with elevation..." -ForegroundColor Yellow
@@ -117,19 +110,12 @@ if ($RunAdminTasks) {
     } elseif ($needsElevation -and (Test-IsAdmin)) {
          Write-Host "`nWARNING: The script was run as Admin, but elevation was required." -ForegroundColor Yellow
          Write-Host "Admin tasks will be performed, but the rest will also run as Admin." -ForegroundColor Yellow
-         # Exécute les tâches admin directement dans ce processus
-         # (Copier/coller simplifié du bloc $RunAdminTasks, mais avec Write-Log)
          Write-Log "[Admin Tasks within User Script] Performing Admin tasks..." -Level 1
          $regPath = "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem"; $regKey = "LongPathsEnabled"
          try { Set-ItemProperty -Path $regPath -Name $regKey -Value 1 -Type DWord -Force -ErrorAction Stop; Write-Log "[Admin] Long paths OK." -Level 2 } catch { Write-Log "[Admin] ERREUR Long paths" -Level 2 -Color Red}
-         # ... (Ajouter VS Tools et Git config ici si besoin de les exécuter même si lancé en admin) ...
-         # NOTE: C'est un cas limite, idéalement l'utilisateur ne lance pas en admin.
     }
-
-    # --- Le script continue ICI en tant qu'utilisateur normal ---
-
+	
     Clear-Host
-    # --- Bannière ---
     Write-Host "-------------------------------------------------------------------------------"
     $asciiBanner = @'
                           __  __               ___    _ ____  ______
@@ -151,13 +137,13 @@ if ($RunAdminTasks) {
         Write-Log "Miniconda not found. Installing..." -Level 1 -Color Yellow
         $minicondaInstaller = Join-Path $env:TEMP "Miniconda3-latest-Windows-x86_64.exe"
         $minicondaUrl = $dependencies.tools.miniconda.url 
-        if (-not $minicondaUrl) { $minicondaUrl = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe" } # Fallback
+        if (-not $minicondaUrl) { $minicondaUrl = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe" }
         Download-File -Uri $minicondaUrl -OutFile $minicondaInstaller 
         Invoke-AndLog $minicondaInstaller "/InstallationType=JustMe /RegisterPython=0 /S /D=`"$condaPath`""
         Remove-Item $minicondaInstaller -ErrorAction SilentlyContinue
     } else { Write-Log "Miniconda is already installed at '$condaPath'" -Level 1 -Color Green }
 
-    if (-not (Test-Path $condaExe)) { Write-Log "ERREUR FATALE: conda.exe introuvable après installation/vérification." -Color Red; Read-Host "Appuyez sur Entrée."; exit 1 }
+    if (-not (Test-Path $condaExe)) { Write-Log "FATAL ERROR: conda.exe not found after installation/verification" -Color Red; Read-Host "Press Enter."; exit 1 }
 
     Write-Log "Accepting Anaconda Terms of Service..." -Level 1
     Invoke-AndLog "$condaExe" "tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main"
@@ -166,7 +152,6 @@ if ($RunAdminTasks) {
 	Write-Log "Installing aria2 via direct download..." -Level 1
     $aria2Url = "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip"
     $aria2ZipPath = Join-Path $env:TEMP "aria2.zip"
-    # Crée un dossier dédié pour aria2 à côté de Miniconda
     $aria2InstallPath = Join-Path $env:LOCALAPPDATA "aria2" 
     $aria2ExePath = Join-Path $aria2InstallPath "aria2c.exe"
 
@@ -202,26 +187,15 @@ if ($RunAdminTasks) {
     } else {
          Write-Log "aria2c.exe already found at '$aria2InstallPath'." -Level 1 -Color Green
     }
-	# 1. Tente de supprimer l'ancien environnement 'UmeAiRT'
+
     Write-Log "Attempting to remove old 'UmeAiRT' environment for a clean install..." -Level 1
-    # -IgnoreErrors est parfait ici : on s'en fiche si ça échoue (l'env n'existait pas)
     Invoke-AndLog "$condaExe" "env remove -n UmeAiRT -y" -IgnoreErrors
-    
-    # 2. Crée le nouvel environnement
     Write-Log "Creating new Conda environment 'UmeAiRT' from '$scriptPath\environment.yml'..." -Level 1
-    
-    # C'EST LA SEULE VÉRIFICATION NÉCESSAIRE.
-    # Si cette commande échoue, Invoke-AndLog arrêtera le script.
     Invoke-AndLog "$condaExe" "env create -f `"$scriptPath\environment.yml`""
+	Write-Log "Environment 'UmeAiRT' created successfully." -Level 2 -Color Green
 
-    # 3. On supprime la vérification manuelle qui causait le faux positif.
-    # Si le script est arrivé jusqu'ici, c'est que la commande ci-dessus a réussi (code 0).
-    
-    Write-Log "Environment 'UmeAiRT' created successfully." -Level 2 -Color Green
-
-    # --- Lancement Phase 2 ---
     Write-Log "Conda environment ready." -Level 1 -Color Green
-    Write-Log "Phase 2 of the installation has been launched..." -Level 0 # Étape 2/2
+    Write-Log "Phase 2 of the installation has been launched..." -Level 0
 
     $phase2LauncherPath = Join-Path $scriptPath "Launch-Phase2.bat"
     $phase2ScriptPath = Join-Path $scriptPath "Install-ComfyUI-Phase2.ps1"

@@ -68,7 +68,12 @@ Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.torch.packag
 Write-Log "Installing ComfyUI requirements" -Level 1
 Invoke-AndLog "python" "-m pip install -r `"$comfyPath\$($dependencies.pip_packages.comfyui_requirements)`""
 
-# --- Step 4: Install Custom Nodes ---
+# --- Step 4: Install Final Python Dependencies ---
+Write-Log "Installing Final Python Dependencies" -Level 0
+Write-Log "Installing standard packages..." -Level 1
+Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.standard -join ' ')"
+
+# --- Step 5: Install Custom Nodes ---
 Write-Log "Installing Custom Nodes" -Level 0
 $csvUrl = $dependencies.files.custom_nodes_csv.url
 $csvPath = Join-Path $InstallPath $dependencies.files.custom_nodes_csv.destination
@@ -86,11 +91,6 @@ foreach ($node in $customNodes) {
             $reqPath = Join-Path $nodePath $node.RequirementsFile
             if (Test-Path $reqPath) {
                 Write-Log "Installing requirements for $nodeName" -Level 2
-				if ($nodeName -eq "ComfyUI-Frame-Interpolation") {
-					Write-Log "Pre-installing CuPy for CUDA 12.x to prevent detection failure..." -Level 3
-					# Force l'installation de cupy pour CUDA 12.x
-					Invoke-AndLog "python" "-m pip install cupy-cuda12x"
-				}
                 Invoke-AndLog "python" "-m pip install -r `"$reqPath`""
             }
         }
@@ -99,11 +99,6 @@ foreach ($node in $customNodes) {
         Write-Log "$nodeName (already exists, skipping)" -Level 1 -Color Green
     }
 }
-
-# --- Step 5: Install Final Python Dependencies ---
-Write-Log "Installing Final Python Dependencies" -Level 0
-Write-Log "Installing standard packages..." -Level 1
-Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.standard -join ' ')"
 
 Write-Log "Installing packages from .whl files..." -Level 1
 foreach ($wheel in $dependencies.pip_packages.wheels) {
@@ -114,27 +109,19 @@ foreach ($wheel in $dependencies.pip_packages.wheels) {
     Remove-Item $wheelPath -ErrorAction SilentlyContinue
 }
 
-#Write-Log "Installing pinned version packages..." -Level 1
-#Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.pinned -join ' ')"
-
 Write-Log "Installing packages from git repositories..." -Level 1
 if ($global:hasGpu) {
-    Write-Log "GPU detected, installing GPU-specific repositories (xformers, SageAttention, apex)..." -Level 1
+    Write-Log "GPU detected, installing GPU-specific repositories..." -Level 1
 
     foreach ($repo in $dependencies.pip_packages.git_repos) {
         Write-Log "Installing $($repo.name)..." -Level 2
         $installUrl = "git+$($repo.url)@$($repo.commit)"
-
-        $pipArgs = ""
-        if ($repo.name -eq "xformers") {
-            $pipArgs = "-m pip install --no-build-isolation --verbose `"$installUrl`""
-        } elseif ($repo.name -eq "SageAttention") {
-            $pipArgs = "-m pip install --no-build-isolation `"$installUrl`""
-        } elseif ($repo.name -eq "apex") {
-            $pipArgs = "-m pip install $($repo.install_options) `"$installUrl`""
-        } else {
-            $pipArgs = "-m pip install `"$installUrl`""
+        $pipArgs = "-m pip install"
+        if ($repo.install_options) {
+            $pipArgs += " $($repo.install_options)"
         }
+        $pipArgs += " `"$installUrl`""
+
         Invoke-AndLog "python" $pipArgs
     }
 

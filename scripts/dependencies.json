@@ -45,31 +45,29 @@
       "onnxruntime-gpu",
       "triton-windows",
 	  "hf_xet",
-	  "nvidia-ml-py"
-    ],
-    "pinned": [
-      "numpy==1.26.4",
-      "pandas",
-      "transformers==4.49.0"
+	  "nvidia-ml-py",
+	  "cupy-cuda12x"
     ],
     "git_repos": [
-      {
-        "name": "xformers",
-        "url": "https://github.com/facebookresearch/xformers.git",
-        "commit": "v0.0.32.post2"
-      },
-      {
-        "name": "SageAttention",
-        "url": "https://github.com/thu-ml/SageAttention",
-        "commit": "main"
-      },
-      {
-        "name": "apex",
-        "url": "https://github.com/UmeAiRT/apex",
-        "commit": "master",
-        "install_options": "-v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings \"--build-option=--cpp_ext\" --config-settings \"--build-option=--cuda_ext\""
-      }
-    ]
+	{
+		"name": "xformers",
+		"url": "https://github.com/facebookresearch/xformers.git",
+		"commit": "v0.0.32.post2",
+		"install_options": "--no-build-isolation --verbose"
+	},
+	{
+		"name": "SageAttention",
+		"url": "https://github.com/thu-ml/SageAttention",
+		"commit": "main",
+		"install_options": "--no-build-isolation"
+	},
+	{
+		"name": "apex",
+		"url": "https://github.com/UmeAiRT/apex",
+		"commit": "master",
+		"install_options": "-v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings \"--build-option=--cpp_ext\" --config-settings \"--build-option=--cuda_ext\""
+	}
+	]
   },
   "files": {
     "comfy_settings": {
