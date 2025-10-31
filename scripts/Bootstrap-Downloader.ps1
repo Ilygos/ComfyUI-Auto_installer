@@ -18,7 +18,7 @@ $filesToDownload = @(
     @{ RepoPath = "scripts/Download-HIDREAM-Models.ps1"; LocalPath = "scripts/Download-HIDREAM-Models.ps1" },
     @{ RepoPath = "scripts/Download-LTXV-Models.ps1";    LocalPath = "scripts/Download-LTXV-Models.ps1" },
     @{ RepoPath = "scripts/Download-QWEN-Models.ps1";    LocalPath = "scripts/Download-QWEN-Models.ps1" },
-    @{ RepoPath = "scripts/UmeAiRTUtils.psm1";           LocalPath = "scripts/UmeAiRTUtils.ps1" },
+    @{ RepoPath = "scripts/UmeAiRTUtils.psm1";           LocalPath = "scripts/UmeAiRTUtils.psm1" },
 
     # Configuration Files
     @{ RepoPath = "scripts/environment.yml";             LocalPath = "scripts/environment.yml" },
@@ -51,19 +51,19 @@ foreach ($file in $filesToDownload) {
         Write-Host "  - Downloading $($file.RepoPath)..."
     }
     
-    # Paramètres pour Invoke-WebRequest
-    $invokeArgs = @{ Uri = $uri; OutFile = $outFile; ErrorAction = 'Stop' }
-    
-    # [CORRECTIF D'ENCODAGE] Les .bat DOIVENT être en ANSI (Default) pour cmd.exe
-    if ($outFile -like "*.bat" -or $outFile -like "*.bat.new") {
-        $invokeArgs.Encoding = 'Default' 
-    } else {
-    # Les autres fichiers (.ps1, .json, .yml) sont OK en UTF-8
-        $invokeArgs.Encoding = 'utf8' 
-    }
-
+    # ==================== DÉBUT DE LA CORRECTION D'ENCODAGE (Compatible PS 5.1) ====================
     try {
-        Invoke-WebRequest @invokeArgs
+        # Les fichiers .bat DOIVENT être en ANSI (Default) pour cmd.exe
+        if ($outFile -like "*.bat" -or $outFile -like "*.bat.new") {
+            # 1. Télécharge le contenu en mémoire
+            $content = Invoke-WebRequest -Uri $uri -ErrorAction Stop -UseBasicParsing
+            # 2. Sauvegarde le contenu en mémoire avec l'encodage ANSI (Default)
+            $content.Content | Set-Content -Path $outFile -Encoding Default
+        } else {
+        # Les autres fichiers (.ps1, .json, .yml) sont OK en UTF-8 (directement avec -OutFile)
+            Invoke-WebRequest -Uri $uri -OutFile $outFile -ErrorAction Stop -UseBasicParsing
+        }
+    # ==================== FIN DE LA CORRECTION D'ENCODAGE ====================
     } catch {
         Write-Host "[ERROR] Failed to download '$($file.RepoPath)'." -ForegroundColor Red
         Write-Host "URL: $uri" -ForegroundColor DarkRed
