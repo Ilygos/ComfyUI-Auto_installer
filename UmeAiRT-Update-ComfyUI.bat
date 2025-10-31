@@ -16,10 +16,8 @@ set "BootstrapUrl=https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/main/scr
 :: (Le reste de la Section 1 reste identique...)
 :: ...
 echo [INFO] Running the bootstrap script to update all required files...
-:: ==================== DÉBUT DE LA MODIFICATION ====================
-:: On ajoute -SkipSelf pour dire au script de ne PAS télécharger le .bat
+:: On ajoute -SkipSelf pour dire au script de ne PAS télécharger ce .bat
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%BootstrapScript%" -InstallPath "%InstallPath%" -SkipSelf
-:: ==================== FIN DE LA MODIFICATION ====================
 echo [OK] All scripts are now up-to-date.
 echo.
 
@@ -48,8 +46,6 @@ echo.
 echo [INFO] The update script is complete.
 pause
 
-:: ============================================================================
-:: SECTION 3: SUPPRIMÉE
-:: ============================================================================
+:: La Section 3 d'auto-mise à jour est supprimée
 
 endlocal
