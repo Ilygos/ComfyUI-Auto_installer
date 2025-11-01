@@ -1,6 +1,7 @@
 param(
     [string]$InstallPath,
-    [string]$Mode = "Install" # Mode par défaut si non spécifié (pour l'installeur)
+    # [CORRECTIF] Accepte le paramètre -SkipSelf (par défaut, il est faux)
+    [switch]$SkipSelf = $false 
 )
 
 # Set the base URL for the GitHub repository's raw content
@@ -18,13 +19,11 @@ $filesToDownload = @(
     @{ RepoPath = "scripts/Download-HIDREAM-Models.ps1"; LocalPath = "scripts/Download-HIDREAM-Models.ps1" },
     @{ RepoPath = "scripts/Download-LTXV-Models.ps1";    LocalPath = "scripts/Download-LTXV-Models.ps1" },
     @{ RepoPath = "scripts/Download-QWEN-Models.ps1";    LocalPath = "scripts/Download-QWEN-Models.ps1" },
-    @{ RepoPath = "scripts/UmeAiRTUtils.psm1";           LocalPath = "scripts/UmeAiRTUtils.psm1" },
-
+    @{ RepoPath = "scripts/UmeAiRTUtils.psm1";           LocalPath = "scripts/UmeAiRTUtils.ps1" },
     # Configuration Files
     @{ RepoPath = "scripts/environment.yml";             LocalPath = "scripts/environment.yml" },
     @{ RepoPath = "scripts/dependencies.json";           LocalPath = "scripts/dependencies.json" },
     @{ RepoPath = "scripts/custom_nodes.csv";            LocalPath = "scripts/custom_nodes.csv" },
-
     # Batch Launchers
     @{ RepoPath = "UmeAiRT-Start-ComfyUI.bat";           LocalPath = "UmeAiRT-Start-ComfyUI.bat" },
     @{ RepoPath = "UmeAiRT-Download_models.bat";         LocalPath = "UmeAiRT-Download_models.bat" },
@@ -43,27 +42,26 @@ foreach ($file in $filesToDownload) {
         New-Item -ItemType Directory -Path $outDir -Force | Out-Null
     }
 
-    # Logique pour télécharger en .new si on est en mode Update (VOTRE LOGIQUE)
-    if ($file.LocalPath -eq "UmeAiRT-Update-ComfyUI.bat" -and $Mode -eq "Update") {
-        $outFile = Join-Path $InstallPath "UmeAiRT-Update-ComfyUI.bat.new"
-        Write-Host "  - Downloading $($file.RepoPath) (as .new to prevent conflict)..."
-    } else {
-        Write-Host "  - Downloading $($file.RepoPath)..."
+    # ==================== DÉBUT DE LA CORRECTION ====================
+    # 1. Gestion de l'auto-écrasement (Ignorer si -SkipSelf est Vrai)
+    if ($SkipSelf -and $file.LocalPath -eq "UmeAiRT-Update-ComfyUI.bat") {
+        Write-Host "  - Skipping download of UmeAiRT-Update-ComfyUI.bat (self-update disabled)" -Color Gray
+        continue # Ignore ce fichier et passe au suivant
     }
-    
-    # ==================== DÉBUT DE LA CORRECTION D'ENCODAGE (Compatible PS 5.1) ====================
+
+    Write-Host "  - Downloading $($file.RepoPath)..."
+
+    # 2. Gestion de l'encodage (compatible PS 5.1) pour éviter la corruption future
     try {
-        # Les fichiers .bat DOIVENT être en ANSI (Default) pour cmd.exe
-        if ($outFile -like "*.bat" -or $outFile -like "*.bat.new") {
-            # 1. Télécharge le contenu en mémoire
+        if ($outFile -like "*.bat") {
+            # Les .bat doivent être en ANSI (Default)
             $content = Invoke-WebRequest -Uri $uri -ErrorAction Stop -UseBasicParsing
-            # 2. Sauvegarde le contenu en mémoire avec l'encodage ANSI (Default)
             $content.Content | Set-Content -Path $outFile -Encoding Default
         } else {
-        # Les autres fichiers (.ps1, .json, .yml) sont OK en UTF-8 (directement avec -OutFile)
+            # Les autres fichiers sont OK avec la méthode simple
             Invoke-WebRequest -Uri $uri -OutFile $outFile -ErrorAction Stop -UseBasicParsing
         }
-    # ==================== FIN DE LA CORRECTION D'ENCODAGE ====================
+    # ==================== FIN DE LA CORRECTION ====================
     } catch {
         Write-Host "[ERROR] Failed to download '$($file.RepoPath)'." -ForegroundColor Red
         Write-Host "URL: $uri" -ForegroundColor DarkRed

@@ -11,13 +11,14 @@ if "%InstallPath:~-1%"=="\" set "InstallPath=%InstallPath:~0,-1%"
 
 set "ScriptsFolder=%InstallPath%\scripts"
 set "BootstrapScript=%ScriptsFolder%\Bootstrap-Downloader.ps1"
-set "BootstrapUrl=https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/main/scripts/Bootstrap-Downloader.ps1"
+:: Utilise votre URL de la branche feature-conda-integration
+set "BootstrapUrl=https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/feature-conda-integration/scripts/Bootstrap-Downloader.ps1"
 
 :: (Le reste de la Section 1 reste identique...)
 :: ...
 echo [INFO] Running the bootstrap script to update all required files...
-:: [CORRECTIF] On envoie -Mode "Update" pour que le bootstrap ne s'écrase pas
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%BootstrapScript%" -InstallPath "%InstallPath%" -Mode "Update"
+:: [CORRECTIF] On envoie -SkipSelf pour que le bootstrap (maintenant à jour) ne télécharge pas ce .bat
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%BootstrapScript%" -InstallPath "%InstallPath%" -SkipSelf
 echo [OK] All scripts are now up-to-date.
 echo.
 
@@ -46,9 +47,6 @@ echo.
 echo [INFO] The update script is complete.
 pause
 
-:: ============================================================================
-:: Section 3: Self-Update (pour gérer le .bat.new)
-:: ============================================================================
-
+:: La Section 3 d'auto-mise à jour est supprimée
 
 endlocal
