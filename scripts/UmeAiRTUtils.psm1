@@ -146,4 +146,4 @@ function Test-NvidiaGpu {
 }
 # --- FIN DU FICHIER ---
 # Exporte les fonctions pour les rendre disponibles à l'importation
-Export-ModuleMember -Function Write-Log, Invoke-AndLog, Download-File, Test-NvidiaGpu
+Export-ModuleMember -Function Write-Log, Invoke-AndLog, Download-File, Test-NvidiaGpu, Ask-Question
