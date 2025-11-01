@@ -11,8 +11,8 @@ if "%InstallPath:~-1%"=="\" set "InstallPath=%InstallPath:~0,-1%"
 
 set "ScriptsFolder=%InstallPath%\scripts"
 set "BootstrapScript=%ScriptsFolder%\Bootstrap-Downloader.ps1"
-:: Utilise votre URL de la branche feature-conda-integration
-set "BootstrapUrl=https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/feature-conda-integration/scripts/Bootstrap-Downloader.ps1"
+:: Utilise votre URL de la branche main
+set "BootstrapUrl=https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/main/scripts/Bootstrap-Downloader.ps1"
 
 :: (Le reste de la Section 1 reste identique...)
 :: ...
