@@ -29,7 +29,7 @@ function Test-IsAdmin {
 }
 
 Import-Module (Join-Path $scriptPath "UmeAiRTUtils.psm1") -Force
-
+Write-Host $scriptPath
 #===========================================================================
 # SECTION 2: MAIN SCRIPT EXECUTION
 #===========================================================================

@@ -20,8 +20,8 @@ echo Where would you like to install ComfyUI?
 echo.
 echo **Default path:** %DefaultPath%
 echo.
-echo -> Press ENTER to use the default path.
-echo -> Or, enter a full path (e.g., D:\ComfyUI) and press ENTER.
+echo Press ENTER to use the default path.
+echo Or, enter a full path (e.g., D:\ComfyUI) and press ENTER.
 echo.
 
 :: 2. Prompt the user
