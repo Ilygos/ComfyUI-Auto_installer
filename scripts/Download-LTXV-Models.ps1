@@ -30,7 +30,22 @@ if (-not (Test-Path $modelsPath)) {
 # --- GPU Detection ---
 Write-Log "-------------------------------------------------------------------------------"
 Write-Log "Checking for NVIDIA GPU to provide model recommendations..." -Color Yellow
-# ... (GPU detection logic) ...
+if (Get-Command 'nvidia-smi' -ErrorAction SilentlyContinue) {
+    try {
+        $gpuInfoCsv = nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+        if ($gpuInfoCsv) {
+            $gpuInfoParts = $gpuInfoCsv.Split(','); $gpuName = $gpuInfoParts[0].Trim(); $gpuMemoryMiB = ($gpuInfoParts[1] -replace ' MiB').Trim(); $gpuMemoryGiB = [math]::Round([int]$gpuMemoryMiB / 1024)
+            Write-Log "GPU: $gpuName" -Color Green; Write-Log "VRAM: $gpuMemoryGiB GB" -Color Green
+            
+            # Recommendations based on LTXV models
+            if ($gpuMemoryGiB -ge 30) { Write-Log "Recommendation: Base 13B" -Color Cyan }
+            elseif ($gpuMemoryGiB -ge 24) { Write-Log "Recommendation: GGUF Q8_0" -Color Cyan }
+            elseif ($gpuMemoryGiB -ge 16) { Write-Log "Recommendation: GGUF Q5_K_M" -Color Cyan }
+            elseif ($gpuMemoryGiB -ge 7) { Write-Log "Recommendation: Base 2B or GGUF Q3_K_S" -Color Cyan }
+            else { Write-Log "Recommendation: GGUF Q3_K_S (performance may vary)" -Color Cyan }
+        }
+    } catch { Write-Log "Could not retrieve GPU information. Error: $($_.Exception.Message)" -Color Red }
+} else { Write-Log "No NVIDIA GPU detected (nvidia-smi not found). Please choose based on your hardware." -Color Gray }
 Write-Log "-------------------------------------------------------------------------------"
 
 # --- Ask all questions ---
@@ -38,7 +53,7 @@ $baseChoice = Ask-Question "Do you want to download LTXV base models?" @("A) 13B
 $ggufChoice = Ask-Question "Do you want to download LTXV GGUF models?" @("A) Q8_0 (24GB Vram)", "B) Q5_K_M (16GB Vram)", "C) Q3_K_S (less than 12GB Vram)", "D) All", "E) No") @("A", "B", "C", "D", "E")
 
 # --- Download files based on answers ---
-Write-Log "`nStarting LTX-Video model downloads..." -Color Cyan
+Write-Log "Starting LTX-Video model downloads..." -Color Cyan
 $baseUrl = "https://huggingface.co/UmeAiRT/ComfyUI-Auto_installer/resolve/main/models"
 $ltxvChkptDir = Join-Path $modelsPath "checkpoints\LTXV"
 $ltxvUnetDir = Join-Path $modelsPath "unet\LTXV"
@@ -48,12 +63,12 @@ New-Item -Path $ltxvChkptDir, $ltxvUnetDir, $vaeDir -ItemType Directory -Force |
 $doDownload = ($baseChoice -ne 'D' -or $ggufChoice -ne 'E')
 
 if ($doDownload) {
-    Write-Log "`nDownloading LTXV common support file (VAE)..."
+    Write-Log "Downloading LTXV common support file (VAE)..."
     Download-File -Uri "$baseUrl/vae/ltxv-13b-0.9.7-vae-BF16.safetensors" -OutFile (Join-Path $vaeDir "ltxv-13b-0.9.7-vae-BF16.safetensors")
 }
 
 if ($baseChoice -ne 'D') {
-    Write-Log "`nDownloading LTXV base model(s)..."
+    Write-Log "Downloading LTXV base model(s)..."
     if ($baseChoice -in 'A', 'C') {
         Download-File -Uri "$baseUrl/checkpoints/LTXV/ltxv-13b-0.9.7-dev.safetensors" -OutFile (Join-Path $ltxvChkptDir "ltxv-13b-0.9.7-dev.safetensors")
     }
@@ -63,7 +78,7 @@ if ($baseChoice -ne 'D') {
 }
 
 if ($ggufChoice -ne 'E') {
-    Write-Log "`nDownloading LTXV GGUF models..."
+    Write-Log "Downloading LTXV GGUF models..."
     if ($ggufChoice -in 'A', 'D') {
         Download-File -Uri "$baseUrl/unet/LTXV/ltxv-13b-0.9.7-dev-Q8_0.gguf" -OutFile (Join-Path $ltxvUnetDir "ltxv-13b-0.9.7-dev-Q8_0.gguf")
     }
@@ -75,5 +90,5 @@ if ($ggufChoice -ne 'E') {
     }
 }
 
-Write-Log "`nLTX-Video model downloads complete." -Color Green
+Write-Log "LTX-Video model downloads complete." -Color Green
 Read-Host "Press Enter to return to the main installer."

@@ -47,7 +47,7 @@ $funinpaintChoice = Ask-Question "Do you want to download WAN FUN INPAINT models
 $funcameraChoice = Ask-Question "Do you want to download WAN FUN CAMERA CONTROL models?" @("A) fp16", "B) fp8", "C) Q8_0", "D) Q5_K_M", "E) Q3_K_S", "F) All", "G) No") @("A", "B", "C", "D", "E", "F", "G")
 
 # --- Download files based on answers ---
-Write-Log "`nStarting WAN model downloads..." -Color Cyan
+Write-Log "Starting WAN model downloads..." -Color Cyan
 $baseUrl = "https://huggingface.co/UmeAiRT/ComfyUI-Auto_installer/resolve/main/models"
 $wanDiffDir = Join-Path $modelsPath "diffusion_models\WAN2.2"; $wanUnetDir = Join-Path $modelsPath "unet\WAN2.2"; $clipDir = Join-Path $modelsPath "clip"; $vaeDir  = Join-Path $modelsPath "vae" ; $visionDir  = Join-Path $modelsPath "clip_vision" ; $loraDir  = Join-Path $modelsPath "loras"
 New-Item -Path $wanDiffDir, $wanUnetDir, $clipDir, $vaeDir -ItemType Directory -Force | Out-Null
@@ -60,7 +60,7 @@ if($doDownload) {
 
 # text-to-video Models
 if ($T2VChoice -ne 'G') {
-    Write-Log "`nDownloading text-to-video Models..."
+    Write-Log "Downloading text-to-video Models..."
     if ($T2VChoice -in 'A', 'F') {
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_t2v_high_noise_14B_fp16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_t2v_high_noise_14B_fp16.safetensors")
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_t2v_low_noise_14B_fp16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_t2v_low_noise_14B_fp16.safetensors")
@@ -85,7 +85,7 @@ if ($T2VChoice -ne 'G') {
 
 # image-to-video Models
 if ($T2VChoice -ne 'G') {
-    Write-Log "`nDownloading image-to-video Models..."
+    Write-Log "Downloading image-to-video Models..."
     if ($T2VChoice -in 'A', 'F') {
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_i2v_high_noise_14B_fp16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_i2v_high_noise_14B_fp16.safetensors")
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_i2v_low_noise_14B_fp16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_i2v_low_noise_14B_fp16.safetensors")
@@ -116,7 +116,7 @@ if($LoRAChoice -in 'A') {
 }
 
 if ($funcontrolChoice -ne 'G') {
-    Write-Log "`nDownloading FUN CONTROL Models..."
+    Write-Log "Downloading FUN CONTROL Models..."
     if ($funcontrolChoice -in 'A', 'F') {
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_fun_control_high_noise_14B_bf16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_fun_control_high_noise_14B_bf16.safetensors")
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_fun_control_low_noise_14B_bf16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_fun_control_low_noise_14B_bf16.safetensors")
@@ -140,7 +140,7 @@ if ($funcontrolChoice -ne 'G') {
 }
 
 if ($funinpaintChoice -ne 'G') {
-    Write-Log "`nDownloading FUN INPAINT Models..."
+    Write-Log "Downloading FUN INPAINT Models..."
     if ($funinpaintChoice -in 'A', 'F') {
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_fun_inpaint_high_noise_14B_bf16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_fun_inpaint_high_noise_14B_bf16.safetensors")
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_fun_inpaint_low_noise_14B_bf16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_fun_inpaint_low_noise_14B_bf16.safetensors")
@@ -164,7 +164,7 @@ if ($funinpaintChoice -ne 'G') {
 }
 
 if ($funcameraChoice -ne 'G') {
-    Write-Log "`nDownloading FUN CAMERA CONTROL Models..."
+    Write-Log "Downloading FUN CAMERA CONTROL Models..."
     if ($funcameraChoice -in 'A', 'F') {
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_fun_camera_high_noise_14B_bf16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_fun_camera_high_noise_14B_bf16.safetensors")
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_fun_camera_low_noise_14B_bf16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_fun_camera_low_noise_14B_bf16.safetensors")
@@ -187,5 +187,5 @@ if ($funcameraChoice -ne 'G') {
     }
 }
 
-Write-Log "`nWAN2.2 model downloads complete." -Color Green
+Write-Log "WAN2.2 model downloads complete." -Color Green
 Read-Host "Press Enter to return to the main installer."

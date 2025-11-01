@@ -79,7 +79,7 @@ $upscaleChoice = Ask-Question -Prompt "Do you want to download Upscaler models ?
 $loraChoice = Ask-Question -Prompt "Do you want to download UmeAiRT LoRAs?" -Choices @("A) Yes", "B) No") -ValidAnswers @("A", "B")
 
 # --- Download files based on answers ---
-Write-Log "`nStarting downloads based on your choices..." -Color Cyan
+Write-Log "Starting downloads based on your choices..." -Color Cyan
 
 # Define all paths once.
 $baseUrl = "https://huggingface.co/UmeAiRT/ComfyUI-Auto_installer/resolve/main/models"
@@ -105,7 +105,7 @@ foreach ($dir in $requiredDirs) {
 $doDownload = ($fluxChoice -ne 'D' -or $ggufChoice -ne 'H' -or $schnellChoice -eq 'A' -or $controlnetChoice -ne 'G' -or $pulidChoice -eq 'A' -or $loraChoice -eq 'A')
 
 if ($doDownload) {
-    Write-Log "`nDownloading common support models (VAE, CLIP)..."
+    Write-Log "Downloading common support models (VAE, CLIP)..."
     Download-File -Uri "$baseUrl/vae/ae.safetensors" -OutFile (Join-Path $vaeDir "ae.safetensors")
     Download-File -Uri "$baseUrl/clip/clip_l.safetensors" -OutFile (Join-Path $clipDir "clip_l.safetensors")
 }
@@ -192,5 +192,5 @@ if ($loraChoice -eq 'A') {
     Download-File -Uri "https://huggingface.co/UmeAiRT/FLUX.1-dev-LoRA-Impressionism/resolve/main/ume_classic_impressionist.safetensors" -OutFile (Join-Path $loraDir "ume_classic_impressionist.safetensors")
 }
 
-Write-Log "`nFLUX model downloads complete." -Color Green
+Write-Log "FLUX model downloads complete." -Color Green
 Read-Host "Press Enter to return to the main installer."
