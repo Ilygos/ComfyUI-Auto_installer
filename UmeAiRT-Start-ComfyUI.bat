@@ -1,9 +1,9 @@
 @echo off
-echo Activating ComfyUI virtual environment...
+echo Activating Conda environment...
 
-REM Activates the virtual environment.
-REM Using "%~dp0" ensures the path is correct regardless of where the script is run from.
-call "%~dp0ComfyUI\venv\Scripts\activate.bat"
+REM Activates the Conda environment.
+call "%LOCALAPPDATA%\Miniconda3\Scripts\activate.bat"
+call conda activate UmeAiRT
 
 echo Starting ComfyUI with custom arguments...
 

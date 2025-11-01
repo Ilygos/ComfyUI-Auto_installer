@@ -13,64 +13,7 @@ param(
 # SECTION 1: HELPER FUNCTIONS & SETUP
 #===========================================================================
 $InstallPath = $InstallPath.Trim('"')
-function Write-Log {
-    param([string]$Message, [string]$Color = "White")
-    $logFile = Join-Path $InstallPath "logs\download_log.txt"
-    $formattedMessage = "[$([DateTime]::Now.ToString('yyyy-MM-dd HH:mm:ss'))] [ModelDownloader-WAN] $Message"
-    Write-Host $Message -ForegroundColor $Color
-    Add-Content -Path $logFile -Value $formattedMessage -ErrorAction SilentlyContinue
-}
-
-function Invoke-AndLog {
-    param([string]$File, [string]$Arguments)
-    $logFile = Join-Path $InstallPath "logs\download_log.txt"
-    $commandToRun = "`"$File`" $Arguments"
-    $cmdArguments = "/C `"$commandToRun >> `"`"$logFile`"`" 2>&1`""
-    try {
-        Start-Process -FilePath "cmd.exe" -ArgumentList $cmdArguments -Wait -WindowStyle Hidden
-    }
-    catch {
-        Write-Log "FATAL ERROR trying to execute command: $commandToRun" -Color Red
-    }
-}
-
-function Download-File {
-    param([string]$Uri, [string]$OutFile)
-    if (Test-Path $OutFile) {
-        Write-Log "Skipping: $((Split-Path $OutFile -Leaf)) (already exists)." -Color Gray
-        return
-    }
-
-    # Present as a modern browser to avoid being blocked.
-    $modernUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-    $fileName = Split-Path -Path $Uri -Leaf
-
-    if (Get-Command 'aria2c' -ErrorAction SilentlyContinue) {
-        Write-Log "Downloading: $fileName"
-        $aria_args = "--disable-ipv6 -c -x 16 -s 16 -k 1M --user-agent=`"$modernUserAgent`" --dir=`"$((Split-Path $OutFile -Parent))`" --out=`"$((Split-Path $OutFile -Leaf))`" `"$Uri`""
-        Invoke-AndLog "aria2c" $aria_args
-    } else {
-        Write-Log "Aria2 not found. Falling back to standard download: $fileName" -Color Yellow
-        # Add the User-Agent to Invoke-WebRequest.
-        Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UserAgent $modernUserAgent
-    }
-}
-
-function Ask-Question {
-    param([string]$Prompt, [string[]]$Choices, [string[]]$ValidAnswers)
-    $choice = ''
-    while ($choice -notin $ValidAnswers) {
-        Write-Log "`n$Prompt" -Color Yellow
-        foreach ($line in $Choices) {
-            Write-Host "  $line" -ForegroundColor Green
-        }
-        $choice = (Read-Host "Enter your choice and press Enter").ToUpper()
-        if ($choice -notin $ValidAnswers) {
-            Write-Log "Invalid choice. Please try again." -Color Red
-        }
-    }
-    return $choice
-}
+Import-Module (Join-Path $PSScriptRoot "UmeAiRTUtils.psm1") -Force
 
 #===========================================================================
 # SECTION 2: SCRIPT EXECUTION
@@ -104,7 +47,7 @@ $funinpaintChoice = Ask-Question "Do you want to download WAN FUN INPAINT models
 $funcameraChoice = Ask-Question "Do you want to download WAN FUN CAMERA CONTROL models?" @("A) fp16", "B) fp8", "C) Q8_0", "D) Q5_K_M", "E) Q3_K_S", "F) All", "G) No") @("A", "B", "C", "D", "E", "F", "G")
 
 # --- Download files based on answers ---
-Write-Log "`nStarting WAN model downloads..." -Color Cyan
+Write-Log "Starting WAN model downloads..." -Color Cyan
 $baseUrl = "https://huggingface.co/UmeAiRT/ComfyUI-Auto_installer/resolve/main/models"
 $wanDiffDir = Join-Path $modelsPath "diffusion_models\WAN2.2"; $wanUnetDir = Join-Path $modelsPath "unet\WAN2.2"; $clipDir = Join-Path $modelsPath "clip"; $vaeDir  = Join-Path $modelsPath "vae" ; $visionDir  = Join-Path $modelsPath "clip_vision" ; $loraDir  = Join-Path $modelsPath "loras"
 New-Item -Path $wanDiffDir, $wanUnetDir, $clipDir, $vaeDir -ItemType Directory -Force | Out-Null
@@ -117,7 +60,7 @@ if($doDownload) {
 
 # text-to-video Models
 if ($T2VChoice -ne 'G') {
-    Write-Log "`nDownloading text-to-video Models..."
+    Write-Log "Downloading text-to-video Models..."
     if ($T2VChoice -in 'A', 'F') {
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_t2v_high_noise_14B_fp16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_t2v_high_noise_14B_fp16.safetensors")
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_t2v_low_noise_14B_fp16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_t2v_low_noise_14B_fp16.safetensors")
@@ -142,7 +85,7 @@ if ($T2VChoice -ne 'G') {
 
 # image-to-video Models
 if ($T2VChoice -ne 'G') {
-    Write-Log "`nDownloading image-to-video Models..."
+    Write-Log "Downloading image-to-video Models..."
     if ($T2VChoice -in 'A', 'F') {
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_i2v_high_noise_14B_fp16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_i2v_high_noise_14B_fp16.safetensors")
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_i2v_low_noise_14B_fp16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_i2v_low_noise_14B_fp16.safetensors")
@@ -173,7 +116,7 @@ if($LoRAChoice -in 'A') {
 }
 
 if ($funcontrolChoice -ne 'G') {
-    Write-Log "`nDownloading FUN CONTROL Models..."
+    Write-Log "Downloading FUN CONTROL Models..."
     if ($funcontrolChoice -in 'A', 'F') {
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_fun_control_high_noise_14B_bf16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_fun_control_high_noise_14B_bf16.safetensors")
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_fun_control_low_noise_14B_bf16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_fun_control_low_noise_14B_bf16.safetensors")
@@ -197,7 +140,7 @@ if ($funcontrolChoice -ne 'G') {
 }
 
 if ($funinpaintChoice -ne 'G') {
-    Write-Log "`nDownloading FUN INPAINT Models..."
+    Write-Log "Downloading FUN INPAINT Models..."
     if ($funinpaintChoice -in 'A', 'F') {
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_fun_inpaint_high_noise_14B_bf16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_fun_inpaint_high_noise_14B_bf16.safetensors")
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_fun_inpaint_low_noise_14B_bf16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_fun_inpaint_low_noise_14B_bf16.safetensors")
@@ -221,7 +164,7 @@ if ($funinpaintChoice -ne 'G') {
 }
 
 if ($funcameraChoice -ne 'G') {
-    Write-Log "`nDownloading FUN CAMERA CONTROL Models..."
+    Write-Log "Downloading FUN CAMERA CONTROL Models..."
     if ($funcameraChoice -in 'A', 'F') {
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_fun_camera_high_noise_14B_bf16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_fun_camera_high_noise_14B_bf16.safetensors")
         Download-File -Uri "$baseUrl/diffusion_models/WAN/wan2.2_fun_camera_low_noise_14B_bf16.safetensors" -OutFile (Join-Path $wanDiffDir "wan2.2_fun_camera_low_noise_14B_bf16.safetensors")
@@ -244,5 +187,5 @@ if ($funcameraChoice -ne 'G') {
     }
 }
 
-Write-Log "`nWAN2.2 model downloads complete." -Color Green
+Write-Log "WAN2.2 model downloads complete." -Color Green
 Read-Host "Press Enter to return to the main installer."

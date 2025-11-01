@@ -1,0 +1,15 @@
+name: UmeAiRT
+channels:
+  - conda-forge
+  - pytorch
+  - nvidia
+  - defaults
+dependencies:
+  - python=3.12.12
+  - git
+  - nvidia::cuda-toolkit=12.9.1
+  - pip
+  - ninja
+  - ccache
+  - c-compiler
+  - cxx-compiler

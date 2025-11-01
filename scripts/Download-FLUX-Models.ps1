@@ -16,66 +16,7 @@ param(
 # SECTION 1: HELPER FUNCTIONS & SETUP
 #===========================================================================
 $InstallPath = $InstallPath.Trim('"')
-function Write-Log {
-    param([string]$Message, [string]$Color = "White")
-    # Use the $InstallPath (passed as an argument) to find the correct log directory.
-    $logFile = Join-Path $InstallPath "logs\download_log.txt"
-    $formattedMessage = "[$([DateTime]::Now.ToString('yyyy-MM-dd HH:mm:ss'))] [ModelDownloader] $Message"
-    Write-Host $Message -ForegroundColor $Color
-    Add-Content -Path $logFile -Value $formattedMessage -ErrorAction SilentlyContinue
-}
-
-function Invoke-AndLog {
-    param([string]$File, [string]$Arguments)
-    # Use the $InstallPath to find the correct log directory.
-    $logFile = Join-Path $InstallPath "logs\download_log.txt"
-    $commandToRun = "`"$File`" $Arguments"
-    $cmdArguments = "/C `"$commandToRun >> `"`"$logFile`"`" 2>&1`""
-    try {
-        Start-Process -FilePath "cmd.exe" -ArgumentList $cmdArguments -Wait -WindowStyle Hidden
-    }
-    catch {
-        Write-Log "FATAL ERROR trying to execute command: $commandToRun" -Color Red
-    }
-}
-
-function Download-File {
-    param([string]$Uri, [string]$OutFile)
-    if (Test-Path $OutFile) {
-        Write-Log "Skipping: $((Split-Path $OutFile -Leaf)) (already exists)." -Color Gray
-        return
-    }
-
-    # Present as a modern browser to avoid being blocked.
-    $modernUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-    $fileName = Split-Path -Path $Uri -Leaf
-
-    if (Get-Command 'aria2c' -ErrorAction SilentlyContinue) {
-        Write-Log "Downloading: $fileName"
-        $aria_args = "--disable-ipv6 -c -x 16 -s 16 -k 1M --user-agent=`"$modernUserAgent`" --dir=`"$((Split-Path $OutFile -Parent))`" --out=`"$((Split-Path $OutFile -Leaf))`" `"$Uri`""
-        Invoke-AndLog "aria2c" $aria_args
-    } else {
-        Write-Log "Aria2 not found. Falling back to standard download: $fileName" -Color Yellow
-        # Add the User-Agent to Invoke-WebRequest.
-        Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UserAgent $modernUserAgent
-    }
-}
-
-function Ask-Question {
-    param([string]$Prompt, [string[]]$Choices, [string[]]$ValidAnswers)
-    $choice = ''
-    while ($choice -notin $ValidAnswers) {
-        Write-Log "`n$Prompt" -Color Yellow
-        foreach ($line in $Choices) {
-            Write-Host "  $line" -ForegroundColor Green
-        }
-        $choice = (Read-Host "Enter your choice and press Enter").ToUpper()
-        if ($choice -notin $ValidAnswers) {
-            Write-Log "Invalid choice. Please try again." -Color Red
-        }
-    }
-    return $choice
-}
+Import-Module (Join-Path $PSScriptRoot "UmeAiRTUtils.psm1") -Force
 
 #===========================================================================
 # SECTION 2: SCRIPT EXECUTION
@@ -130,6 +71,7 @@ Write-Log "---------------------------------------------------------------------
 # --- Ask all questions first ---
 $fluxChoice = Ask-Question -Prompt "Do you want to download FLUX base models?" -Choices @("A) fp16", "B) fp8", "C) All", "D) No") -ValidAnswers @("A", "B", "C", "D")
 $ggufChoice = Ask-Question -Prompt "Do you want to download FLUX GGUF models?" -Choices @("A) Q8 (18GB VRAM)","B) Q6 (14GB VRAM)", "C) Q5 (12GB VRAM)", "D) Q4 (10GB VRAM)", "E) Q3 (8GB VRAM)", "F) Q2 (6GB VRAM)", "G) All", "H) No") -ValidAnswers @("A", "B", "C", "D", "E", "F", "G", "H")
+$nunchakuChoice = Ask-Question -Prompt "Do you want to download FLUX NUNCHAKU models?" -Choices @("A) Base", "B) Fill", "C) KONTEXT", "D) Krea", "E) All", "F) No") -ValidAnswers @("A", "B", "C", "D", "E", "F")
 $schnellChoice = Ask-Question -Prompt "Do you want to download the FLUX SCHNELL model?" -Choices @("A) Yes", "B) No") -ValidAnswers @("A", "B")
 $controlnetChoice = Ask-Question -Prompt "Do you want to download FLUX ControlNet models?" -Choices @("A) fp16", "B) fp8", "C) Q8", "D) Q5", "E) Q4", "F) All", "G) No") -ValidAnswers @("A", "B", "C", "D", "E", "F", "G")
 $fillChoice = Ask-Question -Prompt "Do you want to download FLUX Fill models?" -Choices @("A) fp16", "B) fp8", "C) Q8", "D) Q6", "E) Q5", "F) Q4", "G) Q3", "H) All", "I) No") -ValidAnswers @("A", "B", "C", "D", "E", "F", "G", "H", "I")
@@ -138,7 +80,7 @@ $upscaleChoice = Ask-Question -Prompt "Do you want to download Upscaler models ?
 $loraChoice = Ask-Question -Prompt "Do you want to download UmeAiRT LoRAs?" -Choices @("A) Yes", "B) No") -ValidAnswers @("A", "B")
 
 # --- Download files based on answers ---
-Write-Log "`nStarting downloads based on your choices..." -Color Cyan
+Write-Log "Starting downloads based on your choices..." -Color Cyan
 
 # Define all paths once.
 $baseUrl = "https://huggingface.co/UmeAiRT/ComfyUI-Auto_installer/resolve/main/models"
@@ -161,10 +103,10 @@ foreach ($dir in $requiredDirs) {
 }
 
 # Check if any downloads are needed before downloading common files.
-$doDownload = ($fluxChoice -ne 'D' -or $ggufChoice -ne 'H' -or $schnellChoice -eq 'A' -or $controlnetChoice -ne 'G' -or $pulidChoice -eq 'A' -or $loraChoice -eq 'A')
+$doDownload = ($fluxChoice -ne 'D' -or $ggufChoice -ne 'H' -or $ggufChoice -ne 'F' -or $schnellChoice -eq 'A' -or $controlnetChoice -ne 'G' -or $pulidChoice -eq 'A' -or $loraChoice -eq 'A')
 
 if ($doDownload) {
-    Write-Log "`nDownloading common support models (VAE, CLIP)..."
+    Write-Log "Downloading common support models (VAE, CLIP)..."
     Download-File -Uri "$baseUrl/vae/ae.safetensors" -OutFile (Join-Path $vaeDir "ae.safetensors")
     Download-File -Uri "$baseUrl/clip/clip_l.safetensors" -OutFile (Join-Path $clipDir "clip_l.safetensors")
 }
@@ -203,6 +145,14 @@ if ($ggufChoice -in 'E', 'G') {
 if ($ggufChoice -in 'F', 'G') {
     Download-File -Uri "$baseUrl/unet/FLUX/flux1-dev-Q2_K.gguf" -OutFile (Join-Path $unetFluxDir "flux1-dev-Q2_K.gguf")
 }
+
+# NUNCHAKU Model
+if ($nunchakuChoice -in 'A','E') { Download-File -Uri "$baseUrl/diffusion_models/FLUX/svdq-int4_r32-flux.1-dev.safetensors" -OutFile (Join-Path $fluxDir "svdq-int4_r32-flux.1-dev.safetensors") }
+if ($nunchakuChoice -in 'B','E') { Download-File -Uri "$baseUrl/diffusion_models/FLUX/svdq-int4_r32-flux.1-fill-dev.safetensors" -OutFile (Join-Path $fluxDir "svdq-int4_r32-flux.1-fill-dev.safetensors") }
+if ($nunchakuChoice -in 'B','E') { Download-File -Uri "$baseUrl/diffusion_models/FLUX/svdq-int4_r32-flux.1-kontext-dev.safetensors" -OutFile (Join-Path $fluxDir "svdq-int4_r32-flux.1-kontext-dev.safetensors") }
+if ($nunchakuChoice -in 'B','E') { Download-File -Uri "$baseUrl/diffusion_models/FLUX/svdq-int4_r32-flux.1-krea-dev.safetensors" -OutFile (Join-Path $fluxDir "svdq-int4_r32-flux.1-krea-dev.safetensors") }
+
+if ($nunchakuChoice -ne 'F') { Download-File -Uri "$baseUrl/clip/umt5_xxl_fp8_e4m3fn_scaled.safetensors" -OutFile (Join-Path $clipDir "umt5_xxl_fp8_e4m3fn_scaled.safetensors") }
 
 # Schnell Model
 if ($schnellChoice -eq 'A') {
@@ -251,5 +201,5 @@ if ($loraChoice -eq 'A') {
     Download-File -Uri "https://huggingface.co/UmeAiRT/FLUX.1-dev-LoRA-Impressionism/resolve/main/ume_classic_impressionist.safetensors" -OutFile (Join-Path $loraDir "ume_classic_impressionist.safetensors")
 }
 
-Write-Log "`nFLUX model downloads complete." -Color Green
+Write-Log "FLUX model downloads complete." -Color Green
 Read-Host "Press Enter to return to the main installer."

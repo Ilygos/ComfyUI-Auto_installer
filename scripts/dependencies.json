@@ -1,51 +1,17 @@
 {
-  "tools": {
-    "python": {
-      "version": "3.12.10",
-      "url": "https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe",
-      "arguments": "/quiet InstallAllUsers=1 PrependPath=1"
-    },
-    "git": {
-      "version": "2.51.0.2",
-      "url": "https://github.com/git-for-windows/git/releases/download/v2.51.0.windows.2/Git-2.51.0.2-64-bit.exe",
-      "arguments": "/VERYSILENT"
-    },
-    "seven_zip": {
-      "name": "7-Zip",
-      "version": "25.01",
-      "url": "https://www.7-zip.org/a/7z2501-x64.exe",
-      "install_path": "C:\\Program Files\\7-Zip"
-    },
-    "aria2": {
-      "name": "aria2",
-      "version": "1.36.0",
-      "url": "https://github.com/aria2/aria2/releases/download/release-1.36.0/aria2-1.36.0-win-64bit-build1.zip",
-      "install_path": "C:\\ProgramData\\aria2"
-    },
-    "ninja": {
-      "name": "ninja",
-      "version": "1.13.1",
-      "url": "https://github.com/ninja-build/ninja/releases/download/v1.13.1/ninja-win.zip",
-      "install_path": "C:\\ProgramData\\ninja"
-    },
-    "vs_build_tools": {
-      "url": "https://aka.ms/vs/17/release/vs_BuildTools.exe",
-      "arguments": "--quiet --wait --norestart --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.VC.CMake.Project --add Microsoft.VisualStudio.Component.Windows11SDK.26100",
-      "install_path": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools"
-    },
-    "ccache": {
-      "name": "ccache",
-      "version": "4.11.3",
-      "url": "https://github.com/ccache/ccache/releases/download/v4.11.3/ccache-4.11.3-windows-x86_64.zip",
-      "install_path": "C:\\ProgramData\\ccache"
-    }
-  },
   "repositories": {
     "comfyui": {
         "url": "https://github.com/comfyanonymous/ComfyUI.git"
     },
     "workflows": {
         "url": "https://github.com/UmeAiRT/ComfyUI-Workflows"
+    }
+  },
+  "tools": {
+    "vs_build_tools": {
+      "install_path": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools",
+      "url": "https://aka.ms/vs/17/release/vs_BuildTools.exe",
+      "arguments": "--wait --quiet --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
     }
   },
   "pip_packages": {
@@ -60,7 +26,7 @@
     "comfyui_requirements": "requirements.txt",
     "wheels": [
       {
-        "name": "nunchaku-1.0.0+torch2.8-cp312-cp312-win_amd64.whl",
+        "name": "nunchaku-1.0.0+torch2.8-cp312-cp312-win_amd64",
         "url": "https://github.com/nunchaku-tech/nunchaku/releases/download/v1.0.0/nunchaku-1.0.0+torch2.8-cp312-cp312-win_amd64.whl"
       },
       {
@@ -79,31 +45,29 @@
       "onnxruntime-gpu",
       "triton-windows",
 	  "hf_xet",
-	  "nvidia-ml-py"
-    ],
-    "pinned": [
-      "numpy==1.26.4",
-      "pandas",
-      "transformers==4.49.0"
+	  "nvidia-ml-py",
+	  "cupy-cuda12x"
     ],
     "git_repos": [
-      {
-        "name": "xformers",
-        "url": "https://github.com/facebookresearch/xformers.git",
-        "commit": "v0.0.32.post2"
-      },
-      {
-        "name": "SageAttention",
-        "url": "https://github.com/thu-ml/SageAttention",
-        "commit": "main"
-      },
-      {
-        "name": "apex",
-        "url": "https://github.com/UmeAiRT/apex",
-        "commit": "master",
-        "install_options": "-v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings \"--build-option=--cpp_ext\" --config-settings \"--build-option=--cuda_ext\""
-      }
-    ]
+	{
+		"name": "xformers",
+		"url": "https://github.com/facebookresearch/xformers.git",
+		"commit": "v0.0.32.post2",
+		"install_options": "--no-build-isolation --verbose"
+	},
+	{
+		"name": "SageAttention",
+		"url": "https://github.com/thu-ml/SageAttention",
+		"commit": "main",
+		"install_options": "--no-build-isolation"
+	},
+	{
+		"name": "apex",
+		"url": "https://github.com/UmeAiRT/apex",
+		"commit": "master",
+		"install_options": "-v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings \"--build-option=--cpp_ext\" --config-settings \"--build-option=--cuda_ext\""
+	}
+	]
   },
   "files": {
     "comfy_settings": {
@@ -111,7 +75,7 @@
       "destination": "user/default/comfy.settings.json"
     },
     "custom_nodes_csv": {
-        "url": "https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/main/scripts/custom_nodes.csv",
+        "url": "https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/feature-conda-integration/scripts/custom_nodes.csv",
         "destination": "scripts/custom_nodes.csv"
     }
   }

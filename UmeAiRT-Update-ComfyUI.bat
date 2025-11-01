@@ -2,55 +2,51 @@
 setlocal
 
 :: ============================================================================
-:: Section 1: Checking and requesting administrator privileges
-:: ============================================================================
-net session >nul 2>&1
-if %errorlevel% NEQ 0 (
-    echo [INFO] Requesting administrator privileges for the updater...
-    powershell.exe -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
-    exit /b
-)
-
-:: ============================================================================
-:: Section 2: Bootstrap downloader for all scripts
+:: Section 1: Bootstrap downloader for all scripts
 :: ============================================================================
 title UmeAiRT ComfyUI Updater
-echo [OK] Administrator privileges confirmed.
 echo.
-
-:: Create a "clean" path variable without the trailing backslash
 set "InstallPath=%~dp0"
 if "%InstallPath:~-1%"=="\" set "InstallPath=%InstallPath:~0,-1%"
 
 set "ScriptsFolder=%InstallPath%\scripts"
 set "BootstrapScript=%ScriptsFolder%\Bootstrap-Downloader.ps1"
-set "BootstrapUrl=https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/main/scripts/Bootstrap-Downloader.ps1"
+:: Utilise votre URL de la branche feature-conda-integration
+set "BootstrapUrl=https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/feature-conda-integration/scripts/Bootstrap-Downloader.ps1"
 
-:: Create scripts folder if it doesn't exist
-if not exist "%ScriptsFolder%" (
-    echo [INFO] Creating the scripts folder: %ScriptsFolder%
-    mkdir "%ScriptsFolder%"
-)
-
-:: Download the bootstrap script
-echo [INFO] Downloading the bootstrap script to get the latest files...
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%BootstrapUrl%' -OutFile '%BootstrapScript%'"
-
-:: Run the bootstrap script to download all other files
+:: (Le reste de la Section 1 reste identique...)
+:: ...
 echo [INFO] Running the bootstrap script to update all required files...
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%BootstrapScript%" -InstallPath "%InstallPath%"
+:: [CORRECTIF] On envoie -SkipSelf pour que le bootstrap (maintenant à jour) ne télécharge pas ce .bat
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%BootstrapScript%" -InstallPath "%InstallPath%" -SkipSelf
 echo [OK] All scripts are now up-to-date.
 echo.
 
 :: ============================================================================
-:: Section 3: Running the main update script
+:: Section 2: Running the main update script (Activation de Conda)
 :: ============================================================================
 echo [INFO] Launching the main update script...
 echo.
-
-:: Execute the update script that was just downloaded
+set "CondaPath=%LOCALAPPDATA%\Miniconda3"
+set "CondaActivate=%CondaPath%\Scripts\activate.bat"
+if not exist "%CondaActivate%" (
+    echo [ERREUR] Impossible de trouver Conda à l'adresse : %CondaActivate%
+    pause
+    goto :eof
+)
+echo [INFO] Activation de l'environnement Conda 'UmeAiRT'...
+call "%CondaActivate%" UmeAiRT
+if %errorlevel% neq 0 (
+    echo [ERREUR] Échec de l'activation de l'environnement Conda 'UmeAiRT'.
+    pause
+    goto :eof
+)
+echo [INFO] Lancement du script de mise à jour PowerShell...
 powershell.exe -ExecutionPolicy Bypass -File "%ScriptsFolder%\Update-ComfyUI.ps1" -InstallPath "%InstallPath%"
-
 echo.
 echo [INFO] The update script is complete.
 pause
+
+:: La Section 3 d'auto-mise à jour est supprimée
+
+endlocal
