@@ -18,9 +18,9 @@ if "%DefaultPath:~-1%"=="\" set "DefaultPath=%DefaultPath:~0,-1%"
 
 echo Where would you like to install ComfyUI?
 echo.
-echo **Default path:** %DefaultPath%
+echo Current path: %DefaultPath%
 echo.
-echo Press ENTER to use the default path.
+echo Press ENTER to use the current path.
 echo Or, enter a full path (e.g., D:\ComfyUI) and press ENTER.
 echo.
 
