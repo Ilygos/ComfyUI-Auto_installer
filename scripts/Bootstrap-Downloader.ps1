@@ -31,41 +31,26 @@ $filesToDownload = @(
 )
 
 Write-Host "[INFO] Downloading the latest versions of the installation scripts..."
+
+# Set TLS protocol for compatibility
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 foreach ($file in $filesToDownload) {
     $uri = $baseUrl + $file.RepoPath
     $outFile = Join-Path $InstallPath $file.LocalPath
 
+    # Ensure the destination directory exists before downloading
     $outDir = Split-Path -Path $outFile -Parent
     if (-not (Test-Path $outDir)) {
         New-Item -ItemType Directory -Path $outDir -Force | Out-Null
     }
 
-    # ==================== DÉBUT DE LA CORRECTION ====================
-    # 1. Gestion de l'auto-écrasement (Ignorer si -SkipSelf est Vrai)
-    if ($SkipSelf -and $file.LocalPath -eq "UmeAiRT-Update-ComfyUI.bat") {
-        Write-Host "  - Skipping download of UmeAiRT-Update-ComfyUI.bat (self-update disabled)" -Color Gray
-        continue # Ignore ce fichier et passe au suivant
-    }
-
     Write-Host "  - Downloading $($file.RepoPath)..."
-
-    # 2. Gestion de l'encodage (compatible PS 5.1) pour éviter la corruption future
     try {
-        if ($outFile -like "*.bat") {
-            # Les .bat doivent être en ANSI (Default)
-            $content = Invoke-WebRequest -Uri $uri -ErrorAction Stop -UseBasicParsing
-            $content.Content | Set-Content -Path $outFile -Encoding Default
-        } else {
-            # Les autres fichiers sont OK avec la méthode simple
-            Invoke-WebRequest -Uri $uri -OutFile $outFile -ErrorAction Stop -UseBasicParsing
-        }
-    # ==================== FIN DE LA CORRECTION ====================
+        Invoke-WebRequest -Uri $uri -OutFile $outFile -ErrorAction Stop
     } catch {
-        Write-Host "[ERROR] Failed to download '$($file.RepoPath)'." -ForegroundColor Red
-        Write-Host "URL: $uri" -ForegroundColor DarkRed
-        Write-Host "Destination: $outFile" -ForegroundColor DarkRed
+        Write-Host "[ERROR] Failed to download '$($file.RepoPath)'. Please check your internet connection and the repository URL." -ForegroundColor Red
+        # Pause to allow user to see the error, then exit.
         Read-Host "Press Enter to exit."
         exit 1
     }
