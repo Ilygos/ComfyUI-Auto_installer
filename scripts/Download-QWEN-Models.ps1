@@ -68,11 +68,11 @@ if ($doDownload) {
 
 if ($baseChoice -ne 'D') {
     Write-Log "Downloading QWEN base model..."
-    if ($ggufChoice -in 'A', 'C') {
+    if ($baseChoice -in 'A', 'C') {
         Download-File -Uri "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/diffusion_models/qwen_image_bf16.safetensors" -OutFile (Join-Path $QWENUnetDir "qwen_image_bf16.safetensors")
         Download-File -Uri "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b.safetensors" -OutFile (Join-Path $clipDir "qwen_2.5_vl_7b.safetensors")
     }
-    if ($ggufChoice -in 'B', 'C') {
+    if ($baseChoice -in 'B', 'C') {
         Download-File -Uri "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/diffusion_models/qwen_image_fp8_e4m3fn.safetensors" -OutFile (Join-Path $QWENUnetDir "qwen_image_fp8_e4m3fn.safetensors")
         Download-File -Uri "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors" -OutFile (Join-Path $clipDir "qwen_2.5_vl_7b_fp8_scaled.safetensors")
     }
