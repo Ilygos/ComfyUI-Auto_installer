@@ -49,15 +49,17 @@ Write-Log "---------------------------------------------------------------------
 # --- Ask all questions ---
 $baseChoice = Ask-Question "Do you want to download QWEN base models? " @("A) bf16", "B) fp8", "C) All", "D) No") @("A", "B", "C", "D")
 $ggufChoice = Ask-Question "Do you want to download QWEN GGUF models?" @("A) Q8_0", "B) Q5_K_S", "C) Q4_K_S", "D) All", "E) No") @("A", "B", "C", "D", "E")
+$lightChoice = Ask-Question "Do you want to download QWEN Lightning LoRA? " @("A) 8 Steps", "B) 4 Steps", "C) All", "D) No") @("A", "B", "C", "D")
 
 # --- Download files based on answers ---
 Write-Log "Starting QWEN model downloads..." -Color Cyan
 $baseUrl = "https://huggingface.co/UmeAiRT/ComfyUI-Auto_installer/resolve/main/models"
 $QWENDiffDir = Join-Path $modelsPath "diffusion_models\QWEN"
 $QWENUnetDir = Join-Path $modelsPath "unet\QWEN"
+$QWENLoRADir = Join-Path $modelsPath "loras\QWEN"
 $clipDir = Join-Path $modelsPath "clip"
 $vaeDir = Join-Path $modelsPath "vae"
-New-Item -Path $QWENDiffDir, $QWENUnetDir, $clipDir, $vaeDir -ItemType Directory -Force | Out-Null
+New-Item -Path $QWENDiffDir, $QWENUnetDir, $QWENLoRADir, $clipDir, $vaeDir -ItemType Directory -Force | Out-Null
 
 $doDownload = ($fp8Choice -eq 'A' -or $ggufChoice -ne 'E')
 
@@ -91,6 +93,16 @@ if ($ggufChoice -ne 'E') {
     if ($ggufChoice -in 'C', 'D') {
         Download-File -Uri "$baseUrl/unet/QWEN/Qwen_Image_Distill-Q4_K_S.gguf" -OutFile (Join-Path $QWENUnetDir "Qwen_Image_Distill-Q4_K_S.gguf")
         Download-File -Uri "$baseUrl/clip/Qwen2.5-VL-7B-Instruct-UD-Q4_K_S.gguf" -OutFile (Join-Path $clipDir "Qwen2.5-VL-7B-Instruct-UD-Q4_K_S.gguf")
+    }
+}
+
+if ($lightChoice -ne 'D') {
+    Write-Log "Downloading QWEN Lightning LoRA..."
+    if ($lightChoice -in 'A', 'C') {
+        Download-File -Uri "https://huggingface.co/UmeAiRT/ComfyUI-Auto_installer/resolve/main/models/loras/QWEN/Qwen-Image-Lightning-8steps-V1.1.safetensors" -OutFile (Join-Path $QWENLoRADir "Qwen-Image-Lightning-8steps-V1.1.safetensors")
+    }
+    if ($lightChoice -in 'B', 'C') {
+        Download-File -Uri "https://huggingface.co/UmeAiRT/ComfyUI-Auto_installer/resolve/main/models/loras/QWEN/Qwen-Image-Lightning-4steps-V1.0.safetensors" -OutFile (Join-Path $QWENLoRADir "Qwen-Image-Lightning-4steps-V1.0.safetensors")
     }
 }
 
