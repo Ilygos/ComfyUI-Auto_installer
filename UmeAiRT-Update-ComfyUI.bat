@@ -1,6 +1,7 @@
 @echo off
 setlocal
-
+set "PYTHONPATH="
+set "PYTHONNOUSERSITE=1"
 :: ============================================================================
 :: Section 1: Bootstrap downloader for all scripts
 :: ============================================================================
