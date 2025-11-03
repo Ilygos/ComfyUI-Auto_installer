@@ -1,4 +1,6 @@
 @echo off
+set "PYTHONPATH="
+set "PYTHONNOUSERSITE=1"
 echo Activating Conda environment...
 
 REM Activates the Conda environment.
