@@ -35,7 +35,7 @@ Write-Log "DEBUG: Loaded tools config: $($dependencies.tools | ConvertTo-Json -D
 #===========================================================================
 # SECTION 2: MAIN SCRIPT EXECUTION
 #===========================================================================
-$global:totalSteps = 8
+$global:totalSteps = 9
 $global:currentStep = 2
 $totalCores = [int]$env:NUMBER_OF_PROCESSORS
 $optimalParallelJobs = [int][Math]::Floor(($totalCores * 3) / 4)
@@ -70,7 +70,7 @@ Write-Log "Installing ComfyUI requirements" -Level 1
 Invoke-AndLog "python" "-m pip install -r `"$comfyPath\$($dependencies.pip_packages.comfyui_requirements)`""
 
 # --- Step 4: Install Final Python Dependencies ---
-Write-Log "Installing Final Python Dependencies" -Level 0
+Write-Log "Installing Python Dependencies" -Level 0
 Write-Log "Installing standard packages..." -Level 1
 Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.standard -join ' ')"
 
@@ -132,7 +132,7 @@ foreach ($node in $customNodes) {
 }
 
 Write-Log "Custom nodes installation summary: $successCount succeeded, $failCount failed" -Level 1 -Color $(if ($failCount -eq 0) { "Green" } else { "Yellow" })
-
+Write-Log "Installing GPU-specific optimisations" -Level 0
 Write-Log "Installing packages from git repositories..." -Level 1
 if ($global:hasGpu) {
     Write-Log "GPU detected, installing GPU-specific repositories..." -Level 1
@@ -184,6 +184,7 @@ if ($global:hasGpu) {
 } else {
     Write-Log "Skipping GPU-specific git repositories as no GPU was found." -Level 1
 }
+
 Write-Log "Installing packages from .whl files..." -Level 1
 foreach ($wheel in $dependencies.pip_packages.wheels) {
     Write-Log "Installing $($wheel.name)" -Level 2
