@@ -145,48 +145,21 @@ Write-Log "Installing standard packages..." -Level 1
 Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.standard -join ' ')"
 
 # --- Step 5: Install Custom Nodes & Wheels ---
-Write-Log "Installing Custom Nodes & Wheels" -Level 0
-
-# [FIXED] Step 5.1: Install Wheels first
-Write-Log "Installing packages from .whl files..." -Level 1
-foreach ($wheel in $dependencies.pip_packages.wheels) {
-    Write-Log "Installing $($wheel.name)" -Level 2
-    
-    # [FIXED] Download to scripts folder for cleanliness
-    $wheelPath = Join-Path $scriptPath "$($wheel.name).whl" 
-    
-    Download-File -Uri $wheel.url -OutFile $wheelPath
-    
-    if (Test-Path $wheelPath) {
-        # Force-reinstall to ensure our version overwrites any
-        Invoke-AndLog "python" "-m pip install --force-reinstall `"$wheelPath`""
-        Remove-Item $wheelPath -ErrorAction SilentlyContinue
-    } else {
-        Write-Log "ERROR: Failed to download wheel $($wheel.name)" -Level 2 -Color Red
-    }
-}
-
-# [FIXED] Step 5.2: Install Custom Nodes
-Write-Log "Installing Custom Nodes from CSV..." -Level 0
+Write-Log "Installing Custom Nodes" -Level 0
 $csvPath = Join-Path $InstallPath $dependencies.files.custom_nodes_csv.destination
 $customNodes = Import-Csv -Path $csvPath
 $customNodesPath = Join-Path $InstallPath "custom_nodes"
-
 foreach ($node in $customNodes) {
     $nodeName = $node.Name
     $repoUrl = $node.RepoUrl
     $nodePath = if ($node.Subfolder) { Join-Path $customNodesPath $node.Subfolder } else { Join-Path $customNodesPath $nodeName }
-    
     if (-not (Test-Path $nodePath)) {
         Write-Log "Installing $nodeName" -Level 1
         Invoke-AndLog "git" "clone $repoUrl `"$nodePath`""
-        
         if ($node.RequirementsFile) {
             $reqPath = Join-Path $nodePath $node.RequirementsFile
             if (Test-Path $reqPath) {
                 Write-Log "Installing requirements for $nodeName" -Level 2
-                # At this point, insightface is ALREADY installed from the wheel.
-                # pip will see it and will not try to compile it.
                 Invoke-AndLog "python" "-m pip install -r `"$reqPath`""
             }
         }
@@ -196,22 +169,21 @@ foreach ($node in $customNodes) {
     }
 }
 
-# [FIXED] Step 5.3: Install Git repos (xformers, apex)
-# (This part was already after custom nodes, but is now
-# logically the last part of step 5)
+Write-Log "Installing packages from .whl files..." -Level 1
+foreach ($wheel in $dependencies.pip_packages.wheels) {
+    Write-Log "Installing $($wheel.name)" -Level 2
+    $wheelPath = Join-Path $InstallPath "$($wheel.name).whl"
+    Download-File -Uri $wheel.url -OutFile $wheelPath
+    Invoke-AndLog "python" "-m pip install `"$wheelPath`""
+    Remove-Item $wheelPath -ErrorAction SilentlyContinue
+}
+
 Write-Log "Installing packages from git repositories..." -Level 1
 if ($global:hasGpu) {
     Write-Log "GPU detected, installing GPU-specific repositories..." -Level 1
 
     foreach ($repo in $dependencies.pip_packages.git_repos) {
-        # Ignorer si CUDA non configuré
-        if ($global:skipCudaPackages -and ($repo.name -match "SageAttention|apex")) {
-            Write-Log "Skipping $($repo.name) (CUDA not properly configured)" -Level 2 -Color Yellow
-            continue
-        }
-        
         Write-Log "Installing $($repo.name)..." -Level 2
-        
         $installUrl = "git+$($repo.url)@$($repo.commit)"
         $pipArgs = "-m pip install"
         if ($repo.install_options) {
@@ -219,35 +191,7 @@ if ($global:hasGpu) {
         }
         $pipArgs += " `"$installUrl`""
 
-        # CRITIQUE: Définir CUDA_HOME pour ce processus spécifique
-        $originalCudaHome = $env:CUDA_HOME
-        $originalPath = $env:PATH
-        
-        try {
-            # S'assurer que CUDA_HOME est défini
-            if ($detectedCudaHome) {
-                $env:CUDA_HOME = $detectedCudaHome
-                $cudaBinPath = Join-Path $detectedCudaHome "bin"
-                $cudaLibPath = Join-Path $detectedCudaHome "lib\x64"
-                $env:PATH = "$cudaBinPath;$cudaLibPath;$originalPath"
-            }
-            
-            # Exécuter avec les variables d'environnement définies
-            $result = & python $pipArgs.Split(' ') 2>&1
-            $exitCode = $LASTEXITCODE
-            
-            if ($exitCode -ne 0) {
-                Write-Log "AVERTISSEMENT: Installation de $($repo.name) a échoué (code $exitCode)" -Level 2 -Color Yellow
-                Write-Log "Ce package est optionnel, l'installation continue..." -Level 3 -Color Yellow
-            } else {
-                Write-Log "$($repo.name) installé avec succès" -Level 2 -Color Green
-            }
-        }
-        finally {
-            # Restaurer les variables originales
-            $env:CUDA_HOME = $originalCudaHome
-            $env:PATH = $originalPath
-        }
+        Invoke-AndLog "python" $pipArgs
     }
 
 } else {
