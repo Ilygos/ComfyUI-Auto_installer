@@ -145,53 +145,114 @@ Write-Log "Installing standard packages..." -Level 1
 Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.standard -join ' ')"
 
 # --- Step 5: Install Custom Nodes & Wheels ---
+# --- Step 5: Install Custom Nodes ---
 Write-Log "Installing Custom Nodes" -Level 0
 $csvPath = Join-Path $InstallPath $dependencies.files.custom_nodes_csv.destination
 $customNodes = Import-Csv -Path $csvPath
 $customNodesPath = Join-Path $InstallPath "custom_nodes"
+
+$successCount = 0
+$failCount = 0
+Write-Log "Installing packages from .whl files..." -Level 1
+foreach ($wheel in $dependencies.pip_packages.wheels) {
+    Write-Log "Installing $($wheel.name)" -Level 2
+    $wheelPath = Join-Path $scriptPath "$($wheel.name).whl"
+    
+    try {
+        Download-File -Uri $wheel.url -OutFile $wheelPath
+        
+        if (Test-Path $wheelPath) {
+            $output = & python -m pip install --force-reinstall "`"$wheelPath`"" 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Write-Log "$($wheel.name) installed successfully" -Level 3 -Color Green
+            } else {
+                Write-Log "$($wheel.name) installation failed (continuing...)" -Level 3 -Color Yellow
+            }
+            Remove-Item $wheelPath -ErrorAction SilentlyContinue
+        }
+    } catch {
+        Write-Log "Failed to download/install $($wheel.name) (continuing...)" -Level 3 -Color Yellow
+    }
+}
 foreach ($node in $customNodes) {
     $nodeName = $node.Name
     $repoUrl = $node.RepoUrl
     $nodePath = if ($node.Subfolder) { Join-Path $customNodesPath $node.Subfolder } else { Join-Path $customNodesPath $nodeName }
+    
     if (-not (Test-Path $nodePath)) {
         Write-Log "Installing $nodeName" -Level 1
-        Invoke-AndLog "git" "clone $repoUrl `"$nodePath`""
+        
+        # Clone du repo (non-bloquant)
+        try {
+            $cloneOutput = & git clone $repoUrl "`"$nodePath`"" 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-Log "Failed to clone $nodeName (continuing...)" -Level 2 -Color Yellow
+                $failCount++
+                continue
+            }
+        } catch {
+            Write-Log "Failed to clone $nodeName (continuing...)" -Level 2 -Color Yellow
+            $failCount++
+            continue
+        }
+        
+        # Installation des requirements (non-bloquant)
         if ($node.RequirementsFile) {
             $reqPath = Join-Path $nodePath $node.RequirementsFile
             if (Test-Path $reqPath) {
                 Write-Log "Installing requirements for $nodeName" -Level 2
-                Invoke-AndLog "python" "-m pip install -r `"$reqPath`""
+                
+                try {
+                    $pipOutput = & python -m pip install -r "`"$reqPath`"" 2>&1
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-Log "Some requirements for $nodeName failed (non-critical)" -Level 3 -Color Yellow
+                    }
+                } catch {
+                    Write-Log "Some requirements for $nodeName failed (non-critical)" -Level 3 -Color Yellow
+                }
             }
         }
+        
+        $successCount++
     }
     else {
         Write-Log "$nodeName (already exists, skipping)" -Level 1 -Color Green
+        $successCount++
     }
 }
 
-Write-Log "Installing packages from .whl files..." -Level 1
-foreach ($wheel in $dependencies.pip_packages.wheels) {
-    Write-Log "Installing $($wheel.name)" -Level 2
-    $wheelPath = Join-Path $InstallPath "$($wheel.name).whl"
-    Download-File -Uri $wheel.url -OutFile $wheelPath
-    Invoke-AndLog "python" "-m pip install `"$wheelPath`""
-    Remove-Item $wheelPath -ErrorAction SilentlyContinue
-}
+Write-Log "Custom nodes installation summary: $successCount succeeded, $failCount failed" -Level 1 -Color $(if ($failCount -eq 0) { "Green" } else { "Yellow" })
 
 Write-Log "Installing packages from git repositories..." -Level 1
 if ($global:hasGpu) {
     Write-Log "GPU detected, installing GPU-specific repositories..." -Level 1
 
     foreach ($repo in $dependencies.pip_packages.git_repos) {
-        Write-Log "Installing $($repo.name)..." -Level 2
-        $installUrl = "git+$($repo.url)@$($repo.commit)"
-        $pipArgs = "-m pip install"
-        if ($repo.install_options) {
-            $pipArgs += " $($repo.install_options)"
+        # Ignorer si CUDA non configuré
+        if ($global:skipCudaPackages -and ($repo.name -match "SageAttention|apex")) {
+            Write-Log "Skipping $($repo.name) (CUDA not properly configured)" -Level 2 -Color Yellow
+            continue
         }
-        $pipArgs += " `"$installUrl`""
+        
+        Write-Log "Attempting to install $($repo.name)..." -Level 2
+        $installUrl = "git+$($repo.url)@$($repo.commit)"
+        $pipArgs = @("-m", "pip", "install")
+        
+        if ($repo.install_options) {
+            $pipArgs += $repo.install_options.Split(' ')
+        }
+        $pipArgs += $installUrl
 
-        Invoke-AndLog "python" $pipArgs
+        try {
+            $output = & python $pipArgs 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Write-Log "$($repo.name) installed successfully" -Level 2 -Color Green
+            } else {
+                Write-Log "$($repo.name) installation failed (optional, continuing...)" -Level 2 -Color Yellow
+            }
+        } catch {
+            Write-Log "$($repo.name) installation failed (optional, continuing...)" -Level 2 -Color Yellow
+        }
     }
 
 } else {
