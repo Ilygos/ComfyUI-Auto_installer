@@ -4,7 +4,6 @@ channels:
   - pytorch
   - nvidia
   - defaults
-  - cuda-toolkit
 dependencies:
   - python=3.12.12
   - git
@@ -14,3 +13,4 @@ dependencies:
   - ccache
   - c-compiler
   - cxx-compiler
+  - cuda-toolkit
