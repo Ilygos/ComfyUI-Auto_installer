@@ -146,10 +146,11 @@ if ($global:hasGpu) {
 
         $tempEnvVars = @{}
         if ($repo.PSObject.Properties.Name -contains 'env_vars') {
-            foreach ($key in $repo.env_vars.PSObject.Properties.Keys) {
+            foreach ($key in $repo.env_vars.PSObject.Properties.Name) {
                 $value = $repo.env_vars.$key
                 Write-Log "Setting temporary env var for $($repo.name): $key=$value" -Level 3 -Color Cyan
-                $env:$key = $value
+                # Utiliser Set-Item pour définir des variables d'environnement dynamiquement
+                Set-Item -Path "Env:\$key" -Value $value
                 $tempEnvVars[$key] = $null
             }
         }
