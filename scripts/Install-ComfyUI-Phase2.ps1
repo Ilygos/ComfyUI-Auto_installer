@@ -205,7 +205,7 @@ foreach ($wheel in $dependencies.pip_packages.wheels) {
         Write-Log "Failed to download/install $($wheel.name) (continuing...)" -Level 3 -Color Yellow
     }
 }
-Write-Log "CRITICAL: Forcing re-installation of PyTorch CUDA version" -Level 0 -Color Cyan
+Write-Log "CRITICAL: Forcing re-installation of PyTorch CUDA version" -Level 3 -Color Cyan
 Invoke-AndLog "python" "-m pip install --force-reinstall $($dependencies.pip_packages.torch.packages) --index-url $($dependencies.pip_packages.torch.index_url)"
 # --- Step 6: Download Workflows & Settings ---
 Write-Log "Downloading Workflows & Settings..." -Level 0
