@@ -73,22 +73,21 @@ Write-Log "Installing Final Python Dependencies" -Level 0
 Write-Log "Installing standard packages..." -Level 1
 Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.standard -join ' ')"
 
-# --- Step 5: Install Custom Nodes ---
-# --- Step 5: Install Custom Nodes & Wheels [ORDRE CORRIGÉ] ---
+# --- Step 5: Install Custom Nodes & Wheels [FIXED ORDER] ---
 Write-Log "Installing Custom Nodes & Wheels" -Level 0
 
-# [CORRIGÉ] Étape 5.1 : Installer les Wheels en premier
+# [FIXED] Step 5.1: Install Wheels first
 Write-Log "Installing packages from .whl files..." -Level 1
 foreach ($wheel in $dependencies.pip_packages.wheels) {
     Write-Log "Installing $($wheel.name)" -Level 2
     
-    # [CORRIGÉ] Télécharger dans le dossier des scripts pour plus de propreté
+    # [FIXED] Download to scripts folder for cleanliness
     $wheelPath = Join-Path $scriptPath "$($wheel.name).whl" 
     
     Download-File -Uri $wheel.url -OutFile $wheelPath
     
     if (Test-Path $wheelPath) {
-        # Force-reinstall pour s'assurer que notre version écrase tout
+        # Force-reinstall to ensure our version overwrites any
         Invoke-AndLog "python" "-m pip install --force-reinstall `"$wheelPath`""
         Remove-Item $wheelPath -ErrorAction SilentlyContinue
     } else {
@@ -96,7 +95,7 @@ foreach ($wheel in $dependencies.pip_packages.wheels) {
     }
 }
 
-# [CORRIGÉ] Étape 5.2 : Installer les Custom Nodes
+# [FIXED] Step 5.2: Install Custom Nodes
 Write-Log "Installing Custom Nodes from CSV..." -Level 0
 $csvPath = Join-Path $InstallPath $dependencies.files.custom_nodes_csv.destination
 $customNodes = Import-Csv -Path $csvPath
@@ -115,8 +114,8 @@ foreach ($node in $customNodes) {
             $reqPath = Join-Path $nodePath $node.RequirementsFile
             if (Test-Path $reqPath) {
                 Write-Log "Installing requirements for $nodeName" -Level 2
-                # À ce stade, insightface est DÉJÀ installé depuis le wheel.
-                # pip le verra et n'essaiera pas de le compiler.
+                # At this point, insightface is ALREADY installed from the wheel.
+                # pip will see it and will not try to compile it.
                 Invoke-AndLog "python" "-m pip install -r `"$reqPath`""
             }
         }
@@ -126,9 +125,9 @@ foreach ($node in $customNodes) {
     }
 }
 
-# [CORRIGÉ] Étape 5.3 : Installer les repos Git (xformers, apex)
-# (Cette partie était déjà après les custom nodes, mais elle est maintenant 
-# logiquement la dernière partie de l'étape 5)
+# [FIXED] Step 5.3: Install Git repos (xformers, apex)
+# (This part was already after custom nodes, but is now
+# logically the last part of step 5)
 Write-Log "Installing packages from git repositories..." -Level 1
 if ($global:hasGpu) {
     Write-Log "GPU detected, installing GPU-specific repositories..." -Level 1
@@ -136,8 +135,8 @@ if ($global:hasGpu) {
     foreach ($repo in $dependencies.pip_packages.git_repos) {
         Write-Log "Installing $($repo.name)..." -Level 2
         
-        # --- DÉBUT DE LA LOGIQUE POUR CUDA_MINOR_VERSION_MISMATCH_OK ---
-        # (C'est la correction que nous avons discutée pour apex)
+        # --- START OF LOGIC FOR CUDA_MINOR_VERSION_MISMATCH_OK ---
+        # (This is the fix we discussed for apex)
         $installUrl = "git+$($repo.url)@$($repo.commit)"
         $pipArgs = "-m pip install"
         if ($repo.install_options) {
@@ -164,7 +163,7 @@ if ($global:hasGpu) {
                 Remove-Item "Env:\$key" -ErrorAction SilentlyContinue
             }
         }
-        # --- FIN DE LA LOGIQUE POUR CUDA_MINOR_VERSION_MISMATCH_OK ---
+        # --- END OF LOGIC FOR CUDA_MINOR_VERSION_MISMATCH_OK ---
     }
 
 } else {
