@@ -204,6 +204,12 @@ if ($global:hasGpu) {
     Write-Log "GPU detected, installing GPU-specific repositories..." -Level 1
 
     foreach ($repo in $dependencies.pip_packages.git_repos) {
+        # Ignorer si CUDA non configuré
+        if ($global:skipCudaPackages -and ($repo.name -match "SageAttention|apex")) {
+            Write-Log "Skipping $($repo.name) (CUDA not properly configured)" -Level 2 -Color Yellow
+            continue
+        }
+        
         Write-Log "Installing $($repo.name)..." -Level 2
         
         $installUrl = "git+$($repo.url)@$($repo.commit)"
@@ -213,8 +219,35 @@ if ($global:hasGpu) {
         }
         $pipArgs += " `"$installUrl`""
 
-        # On execute la commande simplement, sans modifier l'environnement
-        Invoke-AndLog "python" $pipArgs
+        # CRITIQUE: Définir CUDA_HOME pour ce processus spécifique
+        $originalCudaHome = $env:CUDA_HOME
+        $originalPath = $env:PATH
+        
+        try {
+            # S'assurer que CUDA_HOME est défini
+            if ($detectedCudaHome) {
+                $env:CUDA_HOME = $detectedCudaHome
+                $cudaBinPath = Join-Path $detectedCudaHome "bin"
+                $cudaLibPath = Join-Path $detectedCudaHome "lib\x64"
+                $env:PATH = "$cudaBinPath;$cudaLibPath;$originalPath"
+            }
+            
+            # Exécuter avec les variables d'environnement définies
+            $result = & python $pipArgs.Split(' ') 2>&1
+            $exitCode = $LASTEXITCODE
+            
+            if ($exitCode -ne 0) {
+                Write-Log "AVERTISSEMENT: Installation de $($repo.name) a échoué (code $exitCode)" -Level 2 -Color Yellow
+                Write-Log "Ce package est optionnel, l'installation continue..." -Level 3 -Color Yellow
+            } else {
+                Write-Log "$($repo.name) installé avec succès" -Level 2 -Color Green
+            }
+        }
+        finally {
+            # Restaurer les variables originales
+            $env:CUDA_HOME = $originalCudaHome
+            $env:PATH = $originalPath
+        }
     }
 
 } else {
