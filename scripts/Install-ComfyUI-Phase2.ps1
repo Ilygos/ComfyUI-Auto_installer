@@ -23,6 +23,16 @@ $logFile = Join-Path $logPath "install_log.txt"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $env:CUDA_HOME = (Join-Path $condaPath "envs\UmeAiRT")
 
+$dependenciesFile = Join-Path (Split-Path -Path $MyInvocation.MyCommand.Definition -Parent) "dependencies.json"
+if (-not (Test-Path $dependenciesFile)) { Write-Host "FATAL: dependencies.json not found..." -ForegroundColor Red; Read-Host; exit 1 }
+$dependencies = Get-Content -Raw -Path $dependenciesFile | ConvertFrom-Json
+if (-not (Test-Path $logPath)) { New-Item -ItemType Directory -Force -Path $logPath | Out-Null }
+
+Import-Module (Join-Path $scriptPath "UmeAiRTUtils.psm1") -Force
+$global:logFile = Join-Path $logPath "install_log.txt"
+$global:hasGpu = Test-NvidiaGpu
+Write-Log "DEBUG: Loaded tools config: $($dependencies.tools | ConvertTo-Json -Depth 3)" -Level 3
+
 # NOUVEAU - CORRECT :
 # Fonction pour trouver CUDA
 function Find-CudaHome {
@@ -58,6 +68,21 @@ function Find-CudaHome {
 }
 
 $detectedCudaHome = Find-CudaHome
+$detectedCudaHome = Find-CudaHome
+if (-not $detectedCudaHome) {
+    Write-Log "CUDA non trouvé. Installation de cuda-toolkit via conda..." -Level 1 -Color Yellow
+    Invoke-AndLog "$condaExe" "install -n UmeAiRT -c conda-forge cuda-toolkit -y"
+    
+    # Réessayer la détection
+    $detectedCudaHome = Find-CudaHome
+}
+
+if ($detectedCudaHome) {
+    $env:CUDA_HOME = $detectedCudaHome
+    Write-Log "CUDA_HOME défini à: $env:CUDA_HOME" -Level 1 -Color Green
+} else {
+    Write-Log "ERREUR: Impossible de configurer CUDA." -Level 1 -Color Red
+}
 if ($detectedCudaHome) {
     $env:CUDA_HOME = $detectedCudaHome
     Write-Log "CUDA_HOME défini à: $env:CUDA_HOME" -Level 1 -Color Green
@@ -65,15 +90,6 @@ if ($detectedCudaHome) {
     Write-Log "ATTENTION: CUDA_HOME non trouvé. Les packages nécessitant CUDA pourraient échouer." -Level 1 -Color Yellow
     Write-Log "Installez CUDA Toolkit depuis: https://developer.nvidia.com/cuda-downloads" -Level 2 -Color Yellow
 }
-$dependenciesFile = Join-Path (Split-Path -Path $MyInvocation.MyCommand.Definition -Parent) "dependencies.json"
-if (-not (Test-Path $dependenciesFile)) { Write-Host "FATAL: dependencies.json not found..." -ForegroundColor Red; Read-Host; exit 1 }
-$dependencies = Get-Content -Raw -Path $dependenciesFile | ConvertFrom-Json
-if (-not (Test-Path $logPath)) { New-Item -ItemType Directory -Force -Path $logPath | Out-Null }
-
-Import-Module (Join-Path $scriptPath "UmeAiRTUtils.psm1") -Force
-$global:logFile = Join-Path $logPath "install_log.txt"
-$global:hasGpu = Test-NvidiaGpu
-Write-Log "DEBUG: Loaded tools config: $($dependencies.tools | ConvertTo-Json -Depth 3)" -Level 3
 #===========================================================================
 # SECTION 2: MAIN SCRIPT EXECUTION
 #===========================================================================
