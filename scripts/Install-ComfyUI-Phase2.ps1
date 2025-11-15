@@ -68,7 +68,6 @@ function Find-CudaHome {
 }
 
 $detectedCudaHome = Find-CudaHome
-$detectedCudaHome = Find-CudaHome
 if (-not $detectedCudaHome) {
     Write-Log "CUDA non trouvé. Installation de cuda-toolkit via conda..." -Level 1 -Color Yellow
     Invoke-AndLog "$condaExe" "install -n UmeAiRT -c conda-forge cuda-toolkit -y"
