@@ -13,4 +13,3 @@ dependencies:
   - ccache
   - c-compiler
   - cxx-compiler
-  - cuda-toolkit
