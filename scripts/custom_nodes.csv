@@ -23,7 +23,6 @@ ComfyUI-Detail-Daemon,https://github.com/Jonseed/ComfyUI-Detail-Daemon.git,,requ
 ComfyUI-TeaCache,https://github.com/welltop-cn/ComfyUI-TeaCache.git,,requirements.txt
 ComfyUI-Crystools,https://github.com/crystian/ComfyUI-Crystools.git,,requirements.txt
 ComfyUI-nunchaku,https://github.com/mit-han-lab/ComfyUI-nunchaku,,requirements.txt
-ComfyUI-NAG,https://github.com/ChenDarYen/ComfyUI-NAG,,
 wlsh_nodes,https://github.com/wallish77/wlsh_nodes,,requirements.txt
 ComfyUI_essentials,https://github.com/cubiq/ComfyUI_essentials,,requirements.txt
 ComfyUI-wanBlockswap,https://github.com/orssorbit/ComfyUI-wanBlockswap,,
@@ -32,3 +31,5 @@ ComfyUI_LayerStyle,https://github.com/chflame163/ComfyUI_LayerStyle,,requirement
 ComfyUI-MagCache,https://github.com/Zehong-Ma/ComfyUI-MagCache,,requirements.txt
 ComfyUI-Upscaler-Tensorrt,https://github.com/yuvraj108c/ComfyUI-Upscaler-Tensorrt,,requirements.txt
 comfyui-vrgamedevgirl,https://github.com/vrgamegirl19/comfyui-vrgamedevgirl,,requirements.txt
+comfyui-int-and-float,https://github.com/danTheMonk/comfyui-int-and-float,,
+was-node-suite-comfyui,https://github.com/WASasquatch/was-node-suite-comfyui,,requirements.txt
