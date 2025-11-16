@@ -186,28 +186,29 @@ if ($global:hasGpu) {
     Write-Log "Skipping GPU-specific git repositories as no GPU was found." -Level 1
 }
 pip list
-Write-Log "Installing packages from .whl files..." -Level 1
-foreach ($wheel in $dependencies.pip_packages.wheels) {
-    Write-Log "Installing $($wheel.name)" -Level 2
-    $wheelPath = Join-Path $scriptPath "$($wheel.name).whl"
-    
-    try {
-        Download-File -Uri $wheel.url -OutFile $wheelPath
-        
-        if (Test-Path $wheelPath) {
-            $output = & python -m pip install --force-reinstall "`"$wheelPath`"" 2>&1
-            if ($LASTEXITCODE -eq 0) {
-                Write-Log "$($wheel.name) installed successfully" -Level 3 -Color Green
-            } else {
-                Write-Log "$($wheel.name) installation failed (continuing...)" -Level 3 -Color Yellow
-            }
-            Remove-Item $wheelPath -ErrorAction SilentlyContinue
-        }
-    } catch {
-        Write-Log "Failed to download/install $($wheel.name) (continuing...)" -Level 3 -Color Yellow
-    }
-}
-pip list
+# Write-Log "Installing packages from .whl files..." -Level 1
+# foreach ($wheel in $dependencies.pip_packages.wheels) {
+#     Write-Log "Installing $($wheel.name)" -Level 2
+#     $wheelPath = Join-Path $scriptPath "$($wheel.name).whl"
+#     
+#     try {
+#         Download-File -Uri $wheel.url -OutFile $wheelPath
+#         
+#         if (Test-Path $wheelPath) {
+#             $output = & python -m pip install --force-reinstall "`"$wheelPath`"" 2>&1
+#             if ($LASTEXITCODE -eq 0) {
+#                 Write-Log "$($wheel.name) installed successfully" -Level 3 -Color Green
+#             } else {
+#                 Write-Log "$($wheel.name) installation failed (continuing...)" -Level 3 -Color Yellow
+#             }
+#             Remove-Item $wheelPath -ErrorAction SilentlyContinue
+#         }
+#     } catch {
+#         Write-Log "Failed to download/install $($wheel.name) (continuing...)" -Level 3 -Color Yellow
+#     }
+# 	pip list
+# }
+
 #Write-Log "CRITICAL: Forcing re-installation of PyTorch CUDA version" -Level 3 -Color Cyan
 #Invoke-AndLog "python" "-m pip install --force-reinstall $($dependencies.pip_packages.torch.packages) --index-url $($dependencies.pip_packages.torch.index_url)"
 # --- Step 6: Download Workflows & Settings ---
