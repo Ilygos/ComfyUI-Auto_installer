@@ -66,15 +66,15 @@ Write-Log "Upgrading pip and wheel" -Level 1
 Invoke-AndLog "python" "-m pip install --upgrade $($dependencies.pip_packages.upgrade -join ' ')"
 Write-Log "Installing torch packages" -Level 1
 Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.torch.packages) --index-url $($dependencies.pip_packages.torch.index_url)"
-pip list
+
 Write-Log "Installing ComfyUI requirements" -Level 1
 Invoke-AndLog "python" "-m pip install -r `"$comfyPath\$($dependencies.pip_packages.comfyui_requirements)`""
-pip list
+
 # --- Step 4: Install Final Python Dependencies ---
 Write-Log "Installing Python Dependencies" -Level 0
 Write-Log "Installing standard packages..." -Level 1
 Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.standard -join ' ')"
-pip list
+
 # --- Step 5: Install Custom Nodes ---
 Write-Log "Installing Custom Nodes" -Level 0
 $csvPath = Join-Path $InstallPath $dependencies.files.custom_nodes_csv.destination
@@ -132,7 +132,7 @@ foreach ($node in $customNodes) {
 }
 
 Write-Log "Custom nodes installation summary: $successCount succeeded, $failCount failed" -Level 1 -Color $(if ($failCount -eq 0) { "Green" } else { "Yellow" })
-pip list
+
 Write-Log "Installing GPU-specific optimisations" -Level 0
 Write-Log "Installing packages from git repositories..." -Level 1
 if ($global:hasGpu) {
@@ -175,7 +175,7 @@ if ($global:hasGpu) {
             $output = & python $pipArgs 2>&1
             if ($LASTEXITCODE -eq 0) {
                 Write-Log "$($repo.name) installed successfully" -Level 2 -Color Green
-				pip list
+				
             } else {
                 Write-Log "$($repo.name) installation failed (optional)" -Level 2 -Color Yellow
             }
@@ -186,7 +186,7 @@ if ($global:hasGpu) {
 } else {
     Write-Log "Skipping GPU-specific git repositories as no GPU was found." -Level 1
 }
-pip list
+
 Write-Log "Installing packages from .whl files..." -Level 1
 foreach ($wheel in $dependencies.pip_packages.wheels) {
     Write-Log "Installing $($wheel.name)" -Level 2
@@ -207,7 +207,7 @@ foreach ($wheel in $dependencies.pip_packages.wheels) {
     } catch {
         Write-Log "Failed to download/install $($wheel.name) (continuing...)" -Level 3 -Color Yellow
     }
-	pip list
+	
 }
 
 #Write-Log "CRITICAL: Forcing re-installation of PyTorch CUDA version" -Level 3 -Color Cyan
