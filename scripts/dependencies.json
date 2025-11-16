@@ -20,14 +20,14 @@
       "wheel"
     ],
     "torch": {
-      "packages": "torch==2.9.1+cu130 torchvision torchaudio",
+      "packages": "torch==2.8.0+cu129 torchvision torchaudio",
       "index_url": "https://download.pytorch.org/whl/cu130"
     },
     "comfyui_requirements": "requirements.txt",
     "wheels": [
       {
-        "name": "nunchaku-1.0.2+torch2.9-cp312-cp312-win_amd64.whl",
-        "url": "https://github.com/nunchaku-tech/nunchaku/releases/download/v1.0.2/nunchaku-1.0.2+torch2.9-cp312-cp312-win_amd64.whl"
+        "name": "nunchaku-1.0.2+torch2.8-cp312-cp312-win_amd64.whl",
+        "url": "https://github.com/nunchaku-tech/nunchaku/releases/download/v1.0.2/nunchaku-1.0.2+torch2.8-cp312-cp312-win_amd64.whl"
       },
       {
         "name": "insightface-0.7.3-cp312-cp312-win_amd64",
