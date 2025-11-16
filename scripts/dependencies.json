@@ -20,8 +20,8 @@
       "wheel"
     ],
     "torch": {
-      "packages": "torch==2.9.1+cu129 torchvision torchaudio",
-      "index_url": "https://download.pytorch.org/whl/cu129"
+      "packages": "torch==2.9.1+cu130 torchvision torchaudio",
+      "index_url": "https://download.pytorch.org/whl/cu130"
     },
     "comfyui_requirements": "requirements.txt",
     "wheels": [
