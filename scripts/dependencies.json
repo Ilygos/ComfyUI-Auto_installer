@@ -48,7 +48,7 @@
 	{
 		"name": "xformers",
 		"url": "https://github.com/facebookresearch/xformers.git",
-		"commit": "v0.0.33.post1",
+		"commit": "v0.0.32.post2",
 		"install_options": "--no-build-isolation --verbose"
 	},
 	{
