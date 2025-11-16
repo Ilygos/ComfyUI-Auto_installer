@@ -65,14 +65,14 @@ Write-Log "Installing Core Dependencies" -Level 0
 Write-Log "Upgrading pip and wheel" -Level 1
 Invoke-AndLog "python" "-m pip install --upgrade $($dependencies.pip_packages.upgrade -join ' ')"
 Write-Log "Installing torch packages" -Level 1
-Invoke-AndLog "python" "-m pip install --force-reinstall $($dependencies.pip_packages.torch.packages) --index-url $($dependencies.pip_packages.torch.index_url)"
+Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.torch.packages) --index-url $($dependencies.pip_packages.torch.index_url)"
 Write-Log "Installing ComfyUI requirements" -Level 1
 Invoke-AndLog "python" "-m pip install -r `"$comfyPath\$($dependencies.pip_packages.comfyui_requirements)`""
 
 # --- Step 4: Install Final Python Dependencies ---
 Write-Log "Installing Python Dependencies" -Level 0
 Write-Log "Installing standard packages..." -Level 1
-# Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.standard -join ' ')"
+Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.standard -join ' ')"
 
 # --- Step 5: Install Custom Nodes ---
 Write-Log "Installing Custom Nodes" -Level 0
