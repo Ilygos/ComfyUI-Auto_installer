@@ -91,17 +91,19 @@ function Download-File {
         Write-Log "Using aria2c from '$aria2ExePath'..." -Level 3
         $OutDir = Split-Path -Path $OutFile -Parent
         $OutName = Split-Path -Path $OutFile -Leaf
+        # Recrée la chaîne d'arguments exactement comme avant
         $aria2Args = "--console-log-level=warn --quiet=true -x 16 -s 16 -k 1M --dir=`"$OutDir`" --out=`"$OutName`" `"$Uri`""
         
-        # Exécution directe SANS Invoke-AndLog pour permettre le fallback
         Write-Log "Executing: $aria2ExePath $aria2Args" -Level 3 -Color DarkGray
-        
-        # Redirige stderr vers stdout (2>&1) et capture la sortie
-        $output = & $aria2ExePath $aria2Args 2>&1 | Out-String
+
+        # *** LA CORRECTION EST ICI ***
+        # Utiliser Invoke-Expression pour forcer PowerShell à analyser la chaîne d'arguments correctement
+        $CommandToRun = "& `"$aria2ExePath`" $aria2Args 2>&1"
+        $output = Invoke-Expression $CommandToRun | Out-String
         Add-Content -Path $global:logFile -Value $output -ErrorAction SilentlyContinue
 
         if ($LASTEXITCODE -ne 0) {
-            # Force une erreur pour sauter au bloc 'catch' (le fallback)
+            # L'échec est maintenant attrapé et lève une exception pour le fallback
             throw "aria2c command failed with code $LASTEXITCODE. Output: $output"
         }
         
@@ -109,6 +111,7 @@ function Download-File {
 
     } catch {
         # --- Tentative 2: Fallback PowerShell ---
+        # S'exécute si aria2c n'est pas trouvé OU si l'Invoke-Expression ci-dessus a échoué
         Write-Log "aria2c failed or not found ('$($_.Exception.Message)'), using slower Invoke-WebRequest..." -Level 3
         
         try {
