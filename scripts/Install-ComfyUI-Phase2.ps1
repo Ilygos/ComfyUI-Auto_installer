@@ -129,7 +129,11 @@ if (-not (Test-Path $managerPath)) {
     Write-Log "Installing ComfyUI-Manager (Required for CLI)..." -Level 1 -Color Cyan
     Invoke-AndLog "git" "clone https://github.com/ltdrdata/ComfyUI-Manager.git `"$managerPath`""
 }
-
+$managerReqs = Join-Path $managerPath "requirements.txt"
+if (Test-Path $managerReqs) {
+    Write-Log "Installing ComfyUI-Manager dependencies (typer, etc.)..." -Level 1
+    Invoke-AndLog $pythonExe "-m pip install -r `"$managerReqs`""
+}
 # 2. Define CLI Script Path
 $cmCliScript = Join-Path $managerPath "cm-cli.py"
 
