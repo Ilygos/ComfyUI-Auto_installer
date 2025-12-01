@@ -94,7 +94,7 @@ if (-not (Test-Path $comfyPath)) {
 Write-Log "Configuring External Folders Architecture..." -Level 0
 
 # List of folders to externalize for data safety
-$externalFolders = @("custom_nodes", "output", "input", "user")
+$externalFolders = @("custom_nodes", "output", "input", "user", "models")
 
 foreach ($folder in $externalFolders) {
     $externalPath = Join-Path $InstallPath $folder
