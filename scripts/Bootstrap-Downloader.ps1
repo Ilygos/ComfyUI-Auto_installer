@@ -1,6 +1,5 @@
 param(
     [string]$InstallPath,
-    # [CORRECTIF] Accepte le paramètre -SkipSelf (par défaut, il est faux)
     [switch]$SkipSelf = $false 
 )
 
