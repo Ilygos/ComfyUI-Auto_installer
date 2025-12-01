@@ -149,12 +149,10 @@ if (Test-Path $snapshotFile) {
     Write-Log "This may take a while as it installs all nodes and dependencies..." -Level 2
     
     try {
-        # La commande 'restore' installe tout ce qui est dans le JSON
-        Invoke-AndLog $pythonExe "`"$cmCliScript`" restore `"$snapshotFile`""
+        Invoke-AndLog $pythonExe "`"$cmCliScript`" restore-snapshot `"$snapshotFile`""
         Write-Log "Snapshot restoration complete!" -Level 1 -Color Green
     } catch {
         Write-Log "ERROR: Snapshot restoration failed. Check logs." -Level 1 -Color Red
-        # Optionnel : On pourrait ne pas bloquer ici, mais c'est critique si le snapshot échoue.
     }
 
 } else {
