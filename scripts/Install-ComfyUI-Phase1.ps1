@@ -127,7 +127,7 @@ if ($RunAdminTasks) {
     Write-Host $asciiBanner -ForegroundColor Cyan
     Write-Host "-------------------------------------------------------------------------------"
     Write-Host "                           ComfyUI - Auto-Installer                            " -ForegroundColor Yellow
-    Write-Host "                                  Version 4.0                                  " -ForegroundColor White
+    Write-Host "                              Version 4.1 beta                                 " -ForegroundColor White
     Write-Host "-------------------------------------------------------------------------------"
 
     # --- Step 0: Choose Installation Type ---
