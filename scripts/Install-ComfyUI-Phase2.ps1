@@ -16,8 +16,6 @@ param(
 $comfyPath = Join-Path $InstallPath "ComfyUI"
 $comfyUserPath = Join-Path $comfyPath "user"
 $scriptPath = Join-Path $InstallPath "scripts"
-$condaPath = Join-Path $env:LOCALAPPDATA "Miniconda3"
-$condaExe = Join-Path $condaPath "Scripts\conda.exe"
 $logPath = Join-Path $InstallPath "logs"
 $logFile = Join-Path $logPath "install_log.txt"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -40,8 +38,10 @@ $global:currentStep = 2
 $totalCores = [int]$env:NUMBER_OF_PROCESSORS
 $optimalParallelJobs = [int][Math]::Floor(($totalCores * 3) / 4)
 if ($optimalParallelJobs -lt 1) { $optimalParallelJobs = 1 }
+
 Write-Log "Configuring Git to handle long paths (system-wide)..." -Level 1
-Invoke-AndLog "git" "config --system core.longpaths true"
+try { Invoke-AndLog "git" "config --system core.longpaths true" -IgnoreErrors } catch { Write-Log "Warning: Failed to set git config (might need admin)." -Level 2 -Color Yellow }
+
 # --- Step 2: Clone ComfyUI ---
 Write-Log "Cloning ComfyUI" -Level 0
 if (-not (Test-Path $comfyPath)) {
@@ -62,6 +62,19 @@ if (-not (Test-Path $comfyUserPath)) { New-Item -ItemType Directory -Force -Path
 
 # --- Step 3: Install Core Dependencies ---
 Write-Log "Installing Core Dependencies" -Level 0
+
+# Check for ninja and install if missing (especially important for venv)
+try {
+    $ninjaCheck = & python -m pip show ninja 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Log "Installing ninja..." -Level 1
+        Invoke-AndLog "python" "-m pip install ninja"
+    }
+} catch {
+    Write-Log "Installing ninja..." -Level 1
+    Invoke-AndLog "python" "-m pip install ninja"
+}
+
 Write-Log "Upgrading pip and wheel" -Level 1
 Invoke-AndLog "python" "-m pip install --upgrade $($dependencies.pip_packages.upgrade -join ' ')"
 Write-Log "Installing torch packages" -Level 1
@@ -92,7 +105,7 @@ foreach ($node in $customNodes) {
     if (-not (Test-Path $nodePath)) {
         Write-Log "Installing $nodeName" -Level 1
         
-        # Clone du repo (non-bloquant)
+        # Clone repo (non-blocking)
         try {
             $cloneOutput = & git clone $repoUrl "`"$nodePath`"" 2>&1
             if ($LASTEXITCODE -ne 0) {
@@ -106,7 +119,7 @@ foreach ($node in $customNodes) {
             continue
         }
         
-        # Installation des requirements (non-bloquant)
+        # Install requirements (non-blocking)
         if ($node.RequirementsFile) {
             $reqPath = Join-Path $nodePath $node.RequirementsFile
             if (Test-Path $reqPath) {
@@ -138,7 +151,7 @@ Write-Log "Installing packages from git repositories..." -Level 1
 if ($global:hasGpu) {
     Write-Log "GPU detected, installing GPU-specific repositories..." -Level 1
    
-   # Détecter CUDA SEULEMENT pour les compilations
+   # Detect CUDA ONLY for compilations
     $cudaHome = $null
     $cudaPaths = @(
         "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v*"
@@ -154,12 +167,12 @@ if ($global:hasGpu) {
         $env:PATH = "$(Join-Path $cudaHome 'bin');$env:PATH"
         Write-Log "CUDA configured for compilation: $cudaHome" -Level 2 -Color Green
     } else {
-        Write-Log "CUDA Toolkit not found - optional packages ignored" -Level 2 -Color Yellow
+        Write-Log "CUDA Toolkit not found (System) - optional packages ignored if they require compilation" -Level 2 -Color Yellow
     }
 
     foreach ($repo in $dependencies.pip_packages.git_repos) {
         if (-not $cudaHome -and ($repo.name -match "SageAttention|apex")) {
-            Write-Log "Skipping $($repo.name) (CUDA Toolkit requis)" -Level 2 -Color Yellow
+            Write-Log "Skipping $($repo.name) (CUDA Toolkit required)" -Level 2 -Color Yellow
             continue
         }
        
@@ -210,8 +223,6 @@ foreach ($wheel in $dependencies.pip_packages.wheels) {
 	
 }
 
-#Write-Log "CRITICAL: Forcing re-installation of PyTorch CUDA version" -Level 3 -Color Cyan
-#Invoke-AndLog "python" "-m pip install --force-reinstall $($dependencies.pip_packages.torch.packages) --index-url $($dependencies.pip_packages.torch.index_url)"
 # --- Step 6: Download Workflows & Settings ---
 Write-Log "Downloading Workflows & Settings..." -Level 0
 $settingsFile = $dependencies.files.comfy_settings

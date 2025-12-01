@@ -24,9 +24,9 @@ if (-not (Test-Path $logPath)) { New-Item -ItemType Directory -Force -Path $logP
 
 # --- Helper Functions ---
 Import-Module (Join-Path $PSScriptRoot "UmeAiRTUtils.psm1") -Force
-# Définit la variable logFile globale pour que le module utilitaire puisse l'utiliser
+# Set global logFile for utility module
 $global:logFile = $logFile
-# Définit les étapes globales (estimation)
+# Set global steps (estimate)
 $global:totalSteps = 3
 $global:currentStep = 0
 
@@ -34,7 +34,6 @@ $global:currentStep = 0
 # SECTION 2: UPDATE PROCESS
 #===========================================================================
 Clear-Host
-# [CORRECTIF] Utilisation de Level -2 pour les bannières (pas de préfixe)
 Write-Log "===============================================================================" -Level -2
 Write-Log "             Starting UmeAiRT ComfyUI Update Process" -Level -2 -Color Yellow
 Write-Log "===============================================================================" -Level -2
@@ -45,15 +44,15 @@ Write-Log "Updating ComfyUI Core..." -Level 1
 Invoke-AndLog "git" "-C `"$comfyPath`" pull"
 
 Write-Log "Updating UmeAiRT Workflows (Forcing)..." -Level 1
-Write-Log "  ATTENTION: Réinitialisation forcée. Les modifications locales des workflows seront écrasées." -Level 2 -Color Red
+Write-Log "  WARNING: Forced reset. Local workflow changes will be overwritten." -Level 2 -Color Red
 
-Write-Log "  Étape 1/3: Annulation des modifications locales (reset)..." -Level 2
+Write-Log "  Step 1/3: Resetting local changes (reset)..." -Level 2
 Invoke-AndLog "git" "-C `"$workflowPath`" reset --hard HEAD"
 
-Write-Log "  Étape 2/3: Suppression des fichiers locaux non suivis (clean)..." -Level 2
+Write-Log "  Step 2/3: Removing untracked local files (clean)..." -Level 2
 Invoke-AndLog "git" "-C `"$workflowPath`" clean -fd"
 
-Write-Log "  Étape 3/3: Récupération des mises à jour (pull)..." -Level 2
+Write-Log "  Step 3/3: Pulling updates (pull)..." -Level 2
 Invoke-AndLog "git" "-C `"$workflowPath`" pull"
 
 # --- 2. Update and Install Custom Nodes & Dependencies ---
@@ -69,19 +68,18 @@ foreach ($node in $customNodesList) {
     $repoUrl = $node.RepoUrl
     $nodePath = if ($node.Subfolder) { Join-Path $customNodesPath $node.Subfolder } else { Join-Path $customNodesPath $nodeName }
 
-    # Étape 1 : Mettre à jour ou Installer
+    # Step 1: Update or Install
     if (Test-Path $nodePath) {
-        # Le nœud existe -> Mise à jour
-        # [CORRECTIF] Utilisation de Level 2 pour les sous-sous-tâches
+        # Node exists -> Update
         Write-Log "Updating $nodeName..." -Level 2 -Color Cyan
         Invoke-AndLog "git" "-C `"$nodePath`" pull"
     } else {
-        # Le nœud n'existe pas -> Installation
+        # Node does not exist -> Install
         Write-Log "New node found: $nodeName. Installing..." -Level 2 -Color Yellow
         Invoke-AndLog "git" "clone $repoUrl `"$nodePath`""
     }
 
-    # Étape 2 : Gérer les dépendances
+    # Step 2: Handle Dependencies
     if (Test-Path $nodePath) {
         if ($node.RequirementsFile) {
             $reqPath = Join-Path $nodePath $node.RequirementsFile
@@ -110,7 +108,7 @@ foreach ($wheel in $dependencies.pip_packages.wheels) {
     Write-Log "Processing wheel: $wheelName" -Level 2 -Color Cyan
 
     try {
-        # Download the wheel file (utilise la fonction de UmeAiRTUtils.psm1)
+        # Download the wheel file (uses UmeAiRTUtils.psm1 function)
         Download-File -Uri $wheelUrl -OutFile $localWheelPath
 
         if (Test-Path $localWheelPath) {
