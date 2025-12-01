@@ -141,7 +141,7 @@ if ($RunAdminTasks) {
         $installTypeChoice = Read-Host "Enter choice (1 or 2)"
     }
     $installType = if ($installTypeChoice -eq "1") { "Full" } else { "Light" }
-    $installTypeFile = Join-Path $InstallPath "install_type"
+    $installTypeFile = Join-Path $scriptPath "install_type"
     $phase2LauncherPath = Join-Path $scriptPath "Launch-Phase2.bat"
     $phase2ScriptPath = Join-Path $scriptPath "Install-ComfyUI-Phase2.ps1"
 
@@ -175,7 +175,7 @@ if ($RunAdminTasks) {
         }
 
         # 3. Create venv
-        $venvPath = Join-Path $InstallPath "venv"
+        $venvPath = Join-Path $scriptPath "venv"
         if (-not (Test-Path $venvPath)) {
             Write-Log "Creating virtual environment (venv) at '$venvPath'..." -Level 1
             Invoke-AndLog "python" "-m venv `"$venvPath`""

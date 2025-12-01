@@ -13,14 +13,14 @@ if exist "%InstallTypeFile%" (
     set /p InstallType=<"%InstallTypeFile%"
 ) else (
     REM Fallback detection
-    if exist "%InstallPath%\venv" (
+    if exist "%InstallPath%\scripts\venv" (
         set "InstallType=venv"
     )
 )
 
 if "%InstallType%"=="venv" (
     echo [INFO] Activating venv environment...
-    call "%InstallPath%\venv\Scripts\activate.bat"
+    call "%InstallPath%\scripts\venv\Scripts\activate.bat"
     if %errorlevel% neq 0 (
         echo [ERROR] Failed to activate venv environment.
         pause

@@ -34,20 +34,20 @@ echo.
 :: Section 2: Running the main update script (Environment Activation)
 :: ============================================================================
 echo [INFO] Checking installation type...
-set "InstallTypeFile=%InstallPath%\install_type"
+set "InstallTypeFile=%InstallPath%\scripts\install_type"
 set "InstallType=conda"
 
 if exist "%InstallTypeFile%" (
     set /p InstallType=<"%InstallTypeFile%"
 ) else (
-    if exist "%InstallPath%\venv" (
+    if exist "%InstallPath%\scripts\venv" (
         set "InstallType=venv"
     )
 )
 
 if "%InstallType%"=="venv" (
     echo [INFO] Activating venv environment...
-    call "%InstallPath%\venv\Scripts\activate.bat"
+    call "%InstallPath%\scripts\venv\Scripts\activate.bat"
     if %errorlevel% neq 0 (
         echo [ERROR] Failed to activate venv environment.
         pause

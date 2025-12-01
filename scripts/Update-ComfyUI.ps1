@@ -10,9 +10,10 @@ $workflowPath = Join-Path $InstallPath "user\default\workflows\UmeAiRT-Workflow"
 $condaPath = Join-Path $env:LOCALAPPDATA "Miniconda3"
 $logPath = Join-Path $InstallPath "logs"
 $logFile = Join-Path $logPath "update_log.txt"
+$scriptPath = Join-Path $InstallPath "scripts"
 
 # --- Load Dependencies from JSON ---
-$dependenciesFile = Join-Path $InstallPath "scripts\dependencies.json"
+$dependenciesFile = Join-Path $scriptPath "dependencies.json"
 if (-not (Test-Path $dependenciesFile)) {
     Write-Host "FATAL: dependencies.json not found at '$dependenciesFile'. Cannot proceed." -ForegroundColor Red
     Read-Host "Press Enter to exit."
@@ -31,12 +32,46 @@ $global:totalSteps = 3
 $global:currentStep = 0
 
 #===========================================================================
+# SECTION 1.5: ENVIRONMENT DETECTION (ADDED FIX)
+#===========================================================================
+$installTypeFile = Join-Path $scriptPath "install_type"
+$pythonExe = "python" # Default fallback (System Python)
+
+if (Test-Path $installTypeFile) {
+    $installType = Get-Content -Path $installTypeFile -Raw
+    $installType = $installType.Trim()
+    
+    if ($installType -eq "venv") {
+        # Path to VENV Python
+        $venvPython = Join-Path $scriptPath "venv\Scripts\python.exe"
+        if (Test-Path $venvPython) {
+            $pythonExe = $venvPython
+            Write-Host "[INIT] Detected VENV installation. Using: $pythonExe" -ForegroundColor Cyan
+        } else {
+            Write-Host "[WARN] Install type is 'venv' but python.exe not found. Falling back to system python." -ForegroundColor Yellow
+        }
+    } elseif ($installType -eq "conda") {
+        # Path to CONDA Python (UmeAiRT env)
+        $condaEnvPython = Join-Path $env:LOCALAPPDATA "Miniconda3\envs\UmeAiRT\python.exe"
+        if (Test-Path $condaEnvPython) {
+            $pythonExe = $condaEnvPython
+            Write-Host "[INIT] Detected CONDA installation. Using: $pythonExe" -ForegroundColor Cyan
+        } else {
+            Write-Host "[WARN] Install type is 'conda' but python.exe not found in UmeAiRT env. Falling back to system python." -ForegroundColor Yellow
+        }
+    }
+} else {
+    Write-Host "[WARN] 'install_type' file not found. Assuming System Python." -ForegroundColor Yellow
+}
+
+#===========================================================================
 # SECTION 2: UPDATE PROCESS
 #===========================================================================
 Clear-Host
 Write-Log "===============================================================================" -Level -2
 Write-Log "             Starting UmeAiRT ComfyUI Update Process" -Level -2 -Color Yellow
 Write-Log "===============================================================================" -Level -2
+Write-Log "Python Executable used: $pythonExe" -Level 1
 
 # --- 1. Update Git Repositories ---
 Write-Log "Updating all Git repositories..." -Level 0 -Color Green
@@ -59,34 +94,43 @@ Invoke-AndLog "git" "-C `"$workflowPath`" pull"
 Write-Log "Updating/Installing Custom Nodes & Dependencies..." -Level 0 -Color Green
 $csvUrl = $dependencies.files.custom_nodes_csv.url
 $csvPath = Join-Path $InstallPath "scripts\custom_nodes.csv"
-$customNodesList = Import-Csv -Path $csvPath
+# Download fresh CSV if needed, or rely on existing logic. Assuming local exists for now or is handled elsewhere.
+if (Test-Path $csvPath) {
+    $customNodesList = Import-Csv -Path $csvPath
+} else {
+    Write-Log "WARNING: custom_nodes.csv not found locally. Skipping node checks." -Level 1 -Color Yellow
+    $customNodesList = @()
+}
 
-Write-Log "Checking all nodes based on custom_nodes.csv..." -Level 1
-
-foreach ($node in $customNodesList) {
-    $nodeName = $node.Name
-    $repoUrl = $node.RepoUrl
-    $nodePath = if ($node.Subfolder) { Join-Path $customNodesPath $node.Subfolder } else { Join-Path $customNodesPath $nodeName }
-
-    # Step 1: Update or Install
-    if (Test-Path $nodePath) {
-        # Node exists -> Update
-        Write-Log "Updating $nodeName..." -Level 2 -Color Cyan
-        Invoke-AndLog "git" "-C `"$nodePath`" pull"
-    } else {
-        # Node does not exist -> Install
-        Write-Log "New node found: $nodeName. Installing..." -Level 2 -Color Yellow
-        Invoke-AndLog "git" "clone $repoUrl `"$nodePath`""
-    }
-
-    # Step 2: Handle Dependencies
-    if (Test-Path $nodePath) {
-        if ($node.RequirementsFile) {
-            $reqPath = Join-Path $nodePath $node.RequirementsFile
-            
-            if (Test-Path $reqPath) {
-                Write-Log "Checking requirements for $nodeName (from '$($node.RequirementsFile)')" -Level 2
-                Invoke-AndLog "python" "-m pip install -r `"$reqPath`""
+if ($customNodesList.Count -gt 0) {
+    Write-Log "Checking all nodes based on custom_nodes.csv..." -Level 1
+    
+    foreach ($node in $customNodesList) {
+        $nodeName = $node.Name
+        $repoUrl = $node.RepoUrl
+        $nodePath = if ($node.Subfolder) { Join-Path $customNodesPath $node.Subfolder } else { Join-Path $customNodesPath $nodeName }
+    
+        # Step 1: Update or Install
+        if (Test-Path $nodePath) {
+            # Node exists -> Update
+            Write-Log "Updating $nodeName..." -Level 2 -Color Cyan
+            Invoke-AndLog "git" "-C `"$nodePath`" pull"
+        } else {
+            # Node does not exist -> Install
+            Write-Log "New node found: $nodeName. Installing..." -Level 2 -Color Yellow
+            Invoke-AndLog "git" "clone $repoUrl `"$nodePath`""
+        }
+    
+        # Step 2: Handle Dependencies
+        if (Test-Path $nodePath) {
+            if ($node.RequirementsFile) {
+                $reqPath = Join-Path $nodePath $node.RequirementsFile
+                
+                if (Test-Path $reqPath) {
+                    Write-Log "Checking requirements for $nodeName (from '$($node.RequirementsFile)')" -Level 2
+                    # FIX: Use specific python executable
+                    Invoke-AndLog $pythonExe "-m pip install -r `"$reqPath`""
+                }
             }
         }
     }
@@ -96,7 +140,8 @@ foreach ($node in $customNodesList) {
 Write-Log "Updating all Python dependencies..." -Level 0 -Color Green
 Write-Log "Checking main ComfyUI requirements..." -Level 1
 $mainReqs = Join-Path $comfyPath "requirements.txt"
-Invoke-AndLog "python" "-m pip install -r `"$mainReqs`""
+# FIX: Use specific python executable
+Invoke-AndLog $pythonExe "-m pip install -r `"$mainReqs`""
 
 # Reinstall wheel packages to ensure correct versions from JSON
 Write-Log "Update wheel packages..." -Level 1
@@ -112,7 +157,8 @@ foreach ($wheel in $dependencies.pip_packages.wheels) {
         Download-File -Uri $wheelUrl -OutFile $localWheelPath
 
         if (Test-Path $localWheelPath) {
-            Invoke-AndLog "python" "-m pip install `"$localWheelPath`""
+            # FIX: Use specific python executable
+            Invoke-AndLog $pythonExe "-m pip install `"$localWheelPath`""
         } else {
             Write-Log "ERROR: Failed to download $wheelName" -Level 2 -Color Red
         }
