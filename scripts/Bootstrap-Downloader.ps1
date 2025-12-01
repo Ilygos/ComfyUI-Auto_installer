@@ -27,6 +27,7 @@ $filesToDownload = @(
     @{ RepoPath = "scripts/snapshot.json";            	 LocalPath = "scripts/snapshot.json" },
     # Batch Launchers
     @{ RepoPath = "UmeAiRT-Start-ComfyUI.bat";           LocalPath = "UmeAiRT-Start-ComfyUI.bat" },
+    @{ RepoPath = "UmeAiRT-Start-ComfyUI_LowVRAM.bat";   LocalPath = "UmeAiRT-Start-ComfyUI_LowVRAM.bat" },
     @{ RepoPath = "UmeAiRT-Download_models.bat";         LocalPath = "UmeAiRT-Download_models.bat" },
     @{ RepoPath = "UmeAiRT-Update-ComfyUI.bat";          LocalPath = "UmeAiRT-Update-ComfyUI.bat" }
 )
