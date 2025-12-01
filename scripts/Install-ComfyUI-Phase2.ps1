@@ -88,13 +88,50 @@ if (-not (Test-Path $comfyPath)) {
     Write-Log "ComfyUI directory already exists" -Level 1 -Color Green
 }
 
-if (-not (Test-Path $comfyUserPath)) { New-Item -ItemType Directory -Force -Path $comfyUserPath | Out-Null }
+#===========================================================================
+# SECTION 2.5: ARCHITECTURE SETUP (EXTERNAL FOLDERS + JUNCTIONS)
+#===========================================================================
+Write-Log "Configuring External Folders Architecture..." -Level 0
+
+# List of folders to externalize for data safety
+$externalFolders = @("custom_nodes", "output", "input", "user")
+
+foreach ($folder in $externalFolders) {
+    $externalPath = Join-Path $InstallPath $folder
+    $internalPath = Join-Path $comfyPath $folder
+
+    # 1. Create external secure folder if it doesn't exist
+    if (-not (Test-Path $externalPath)) {
+        New-Item -ItemType Directory -Force -Path $externalPath | Out-Null
+        Write-Log "Created external secure folder: $folder" -Level 1
+    }
+
+    # 2. Handle internal folder (inside ComfyUI)
+    if (Test-Path $internalPath) {
+        # If it's a real directory (created by git clone), remove it to replace with junction
+        $item = Get-Item $internalPath
+        if ($item.Attributes -notmatch "ReparsePoint") {
+            Remove-Item -Path $internalPath -Recurse -Force
+            Write-Log "Removed default internal folder: $folder" -Level 1
+        }
+    }
+
+    # 3. Create Junction (Robust symbolic link)
+    if (-not (Test-Path $internalPath)) {
+        # Cmd.exe mklink /J is often more reliable than New-Item -ItemType Junction on some PS versions
+        cmd /c "mklink /J `"$internalPath`" `"$externalPath`"" | Out-Null
+        Write-Log "Linked ComfyUI\$folder -> $folder (External)" -Level 1 -Color Cyan
+    }
+}
+
+#===========================================================================
+# BACK TO INSTALLATION
+#===========================================================================
 
 # --- Step 3: Install Core Dependencies ---
 Write-Log "Installing Core Dependencies" -Level 0
 
 # Check for ninja and install if missing
-# Note: We use & $pythonExe explicitly
 try {
     $ninjaCheck = & $pythonExe -m pip show ninja 2>&1
     if ($LASTEXITCODE -ne 0) {
@@ -122,33 +159,38 @@ Invoke-AndLog $pythonExe "-m pip install $($dependencies.pip_packages.standard -
 # --- Step 5: Install Custom Nodes (via ComfyUI-Manager CLI) ---
 Write-Log "Installing Custom Nodes via Manager CLI" -Level 0
 
-$customNodesPath = Join-Path $InstallPath "custom_nodes"
+# Thanks to junctions, we target the internal path, but data is stored externally!
+$internalCustomNodes = Join-Path $comfyPath "custom_nodes"
+
 # 1. Install ComfyUI-Manager FIRST (Required for CLI)
-$managerPath = Join-Path $customNodesPath "ComfyUI-Manager"
+$managerPath = Join-Path $internalCustomNodes "ComfyUI-Manager"
 if (-not (Test-Path $managerPath)) {
     Write-Log "Installing ComfyUI-Manager (Required for CLI)..." -Level 1 -Color Cyan
     Invoke-AndLog "git" "clone https://github.com/ltdrdata/ComfyUI-Manager.git `"$managerPath`""
 }
+
+# 2. Dependencies
 $managerReqs = Join-Path $managerPath "requirements.txt"
 if (Test-Path $managerReqs) {
     Write-Log "Installing ComfyUI-Manager dependencies (typer, etc.)..." -Level 1
     Invoke-AndLog $pythonExe "-m pip install -r `"$managerReqs`""
 }
-# 2. Define CLI Script Path
-$cmCliScript = Join-Path $managerPath "cm-cli.py"
 
-# 3. Check for snapshot.json in the scripts folder
+# 3. CLI Execution
+$cmCliScript = Join-Path $managerPath "cm-cli.py"
 $snapshotFile = Join-Path $scriptPath "snapshot.json"
 
+# Set PYTHONPATH so the Manager finds its local modules (utils, etc.)
 $env:PYTHONPATH = "$comfyPath;$managerPath;$env:PYTHONPATH"
 $env:COMFYUI_PATH = $comfyPath
 
 if (Test-Path $snapshotFile) {
-    # --- METHODE A : Installation via SNAPSHOT (Recommandé) ---
+    # --- METHOD A: Snapshot (Recommended) ---
     Write-Log "SNAPSHOT DETECTED: Restoring environment from snapshot.json..." -Level 1 -Color Cyan
     Write-Log "This may take a while as it installs all nodes and dependencies..." -Level 2
     
     try {
+        # Using 'restore-snapshot' command
         Invoke-AndLog $pythonExe "`"$cmCliScript`" restore-snapshot `"$snapshotFile`""
         Write-Log "Snapshot restoration complete!" -Level 1 -Color Green
     } catch {
@@ -156,7 +198,7 @@ if (Test-Path $snapshotFile) {
     }
 
 } else {
-    # --- METHODE B : Fallback vers CSV (Si pas de snapshot) ---
+    # --- METHOD B: Fallback to CSV ---
     Write-Log "No snapshot.json found. Falling back to custom_nodes.csv..." -Level 1 -Color Yellow
     
     $csvPath = Join-Path $InstallPath $dependencies.files.custom_nodes_csv.destination
@@ -168,7 +210,7 @@ if (Test-Path $snapshotFile) {
         foreach ($node in $customNodes) {
             $nodeName = $node.Name
             $repoUrl = $node.RepoUrl
-            $possiblePath = Join-Path $customNodesPath $nodeName
+            $possiblePath = Join-Path $internalCustomNodes $nodeName
 
             if (-not (Test-Path $possiblePath)) {
                 Write-Log "Installing $nodeName via CLI..." -Level 1
@@ -189,6 +231,12 @@ if (Test-Path $snapshotFile) {
         Write-Log "WARNING: Neither snapshot.json nor custom_nodes.csv were found." -Level 1 -Color Red
     }
 }
+
+# --- CLEANUP ENV VARS ---
+$env:PYTHONPATH = $env:PYTHONPATH -replace [regex]::Escape("$comfyPath;"), ""
+$env:PYTHONPATH = $env:PYTHONPATH -replace [regex]::Escape("$managerPath;"), ""
+$env:COMFYUI_PATH = $null
+
 
 # --- Step 6: Install GPU-specific optimisations ---
 Write-Log "Installing GPU-specific optimisations" -Level 0
@@ -277,7 +325,8 @@ if (-not (Test-Path $settingsDir)) { New-Item -Path $settingsDir -ItemType Direc
 Download-File -Uri $settingsFile.url -OutFile $settingsDest
 
 $workflowRepo = $dependencies.repositories.workflows
-$workflowCloneDest = Join-Path $InstallPath "user\default\workflows\UmeAiRT-Workflow"
+# IMPORTANT: The user/ folder is now externalized via junction
+$workflowCloneDest = Join-Path $comfyPath "user\default\workflows\UmeAiRT-Workflow"
 if (-not (Test-Path $workflowCloneDest)) { 
     Invoke-AndLog "git" "clone $($workflowRepo.url) `"$workflowCloneDest`""
 }
