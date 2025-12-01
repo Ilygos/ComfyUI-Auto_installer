@@ -3,7 +3,7 @@
     An automated installer for ComfyUI and its dependencies.
 .DESCRIPTION
     This script streamlines the setup of ComfyUI, including Python, Git,
-    all required Python packages, custom nodes, and optional models.
+    all required Python packages, custom nodes (via ComfyUI-Manager CLI), and optional models.
 #>
 
 #===========================================================================
@@ -29,6 +29,36 @@ Import-Module (Join-Path $scriptPath "UmeAiRTUtils.psm1") -Force
 $global:logFile = Join-Path $logPath "install_log.txt"
 $global:hasGpu = Test-NvidiaGpu
 Write-Log "DEBUG: Loaded tools config: $($dependencies.tools | ConvertTo-Json -Depth 3)" -Level 3
+
+#===========================================================================
+# SECTION 1.5: ENVIRONMENT DETECTION (SAFETY NET)
+#===========================================================================
+# This ensures we use the correct Python executable even if the .bat launcher wasn't used.
+
+$installTypeFile = Join-Path $scriptPath "install_type"
+$pythonExe = "python" # Default fallback (relies on PATH)
+
+if (Test-Path $installTypeFile) {
+    $iType = Get-Content -Path $installTypeFile -Raw
+    $iType = $iType.Trim()
+    
+    if ($iType -eq "venv") {
+        $venvPython = Join-Path $scriptPath "venv\Scripts\python.exe"
+        if (Test-Path $venvPython) {
+            $pythonExe = $venvPython
+            Write-Log "VENV MODE DETECTED: Using $pythonExe" -Level 1 -Color Cyan
+        }
+    } elseif ($iType -eq "conda") {
+        # Checks specifically for the UmeAiRT environment python
+        $condaEnvPython = Join-Path $env:LOCALAPPDATA "Miniconda3\envs\UmeAiRT\python.exe"
+        if (Test-Path $condaEnvPython) {
+            $pythonExe = $condaEnvPython
+            Write-Log "CONDA MODE DETECTED: Using $pythonExe" -Level 1 -Color Cyan
+        }
+    }
+} else {
+    Write-Log "WARNING: Installation type not detected. Using system Python (if available)." -Level 1 -Color Yellow
+}
 
 #===========================================================================
 # SECTION 2: MAIN SCRIPT EXECUTION
@@ -63,91 +93,100 @@ if (-not (Test-Path $comfyUserPath)) { New-Item -ItemType Directory -Force -Path
 # --- Step 3: Install Core Dependencies ---
 Write-Log "Installing Core Dependencies" -Level 0
 
-# Check for ninja and install if missing (especially important for venv)
+# Check for ninja and install if missing
+# Note: We use & $pythonExe explicitly
 try {
-    $ninjaCheck = & python -m pip show ninja 2>&1
+    $ninjaCheck = & $pythonExe -m pip show ninja 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Log "Installing ninja..." -Level 1
-        Invoke-AndLog "python" "-m pip install ninja"
+        Invoke-AndLog $pythonExe "-m pip install ninja"
     }
 } catch {
     Write-Log "Installing ninja..." -Level 1
-    Invoke-AndLog "python" "-m pip install ninja"
+    Invoke-AndLog $pythonExe "-m pip install ninja"
 }
 
 Write-Log "Upgrading pip and wheel" -Level 1
-Invoke-AndLog "python" "-m pip install --upgrade $($dependencies.pip_packages.upgrade -join ' ')"
+Invoke-AndLog $pythonExe "-m pip install --upgrade $($dependencies.pip_packages.upgrade -join ' ')"
 Write-Log "Installing torch packages" -Level 1
-Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.torch.packages) --index-url $($dependencies.pip_packages.torch.index_url)"
+Invoke-AndLog $pythonExe "-m pip install $($dependencies.pip_packages.torch.packages) --index-url $($dependencies.pip_packages.torch.index_url)"
 
 Write-Log "Installing ComfyUI requirements" -Level 1
-Invoke-AndLog "python" "-m pip install -r `"$comfyPath\$($dependencies.pip_packages.comfyui_requirements)`""
+Invoke-AndLog $pythonExe "-m pip install -r `"$comfyPath\$($dependencies.pip_packages.comfyui_requirements)`""
 
 # --- Step 4: Install Final Python Dependencies ---
 Write-Log "Installing Python Dependencies" -Level 0
 Write-Log "Installing standard packages..." -Level 1
-Invoke-AndLog "python" "-m pip install $($dependencies.pip_packages.standard -join ' ')"
+Invoke-AndLog $pythonExe "-m pip install $($dependencies.pip_packages.standard -join ' ')"
 
-# --- Step 5: Install Custom Nodes ---
-Write-Log "Installing Custom Nodes" -Level 0
-$csvPath = Join-Path $InstallPath $dependencies.files.custom_nodes_csv.destination
-$customNodes = Import-Csv -Path $csvPath
+# --- Step 5: Install Custom Nodes (via ComfyUI-Manager CLI) ---
+Write-Log "Installing Custom Nodes via Manager CLI" -Level 0
+
 $customNodesPath = Join-Path $InstallPath "custom_nodes"
+# 1. Install ComfyUI-Manager FIRST (Required for CLI)
+$managerPath = Join-Path $customNodesPath "ComfyUI-Manager"
+if (-not (Test-Path $managerPath)) {
+    Write-Log "Installing ComfyUI-Manager (Required for CLI)..." -Level 1 -Color Cyan
+    Invoke-AndLog "git" "clone https://github.com/ltdrdata/ComfyUI-Manager.git `"$managerPath`""
+}
 
-$successCount = 0
-$failCount = 0
+# 2. Define CLI Script Path
+$cmCliScript = Join-Path $managerPath "cm-cli.py"
 
-foreach ($node in $customNodes) {
-    $nodeName = $node.Name
-    $repoUrl = $node.RepoUrl
-    $nodePath = if ($node.Subfolder) { Join-Path $customNodesPath $node.Subfolder } else { Join-Path $customNodesPath $nodeName }
+# 3. Check for snapshot.json in the scripts folder
+$snapshotFile = Join-Path $scriptPath "snapshot.json"
+
+if (Test-Path $snapshotFile) {
+    # --- METHODE A : Installation via SNAPSHOT (Recommandé) ---
+    Write-Log "SNAPSHOT DETECTED: Restoring environment from snapshot.json..." -Level 1 -Color Cyan
+    Write-Log "This may take a while as it installs all nodes and dependencies..." -Level 2
     
-    if (-not (Test-Path $nodePath)) {
-        Write-Log "Installing $nodeName" -Level 1
-        
-        # Clone repo (non-blocking)
-        try {
-            $cloneOutput = & git clone $repoUrl "`"$nodePath`"" 2>&1
-            if ($LASTEXITCODE -ne 0) {
-                Write-Log "Failed to clone $nodeName (continuing...)" -Level 2 -Color Yellow
-                $failCount++
-                continue
-            }
-        } catch {
-            Write-Log "Failed to clone $nodeName (continuing...)" -Level 2 -Color Yellow
-            $failCount++
-            continue
-        }
-        
-        # Install requirements (non-blocking)
-        if ($node.RequirementsFile) {
-            $reqPath = Join-Path $nodePath $node.RequirementsFile
-            if (Test-Path $reqPath) {
-                Write-Log "Installing requirements for $nodeName" -Level 2
-                
-                try {
-                    $pipOutput = & python -m pip install -r "`"$reqPath`"" 2>&1
-                    if ($LASTEXITCODE -ne 0) {
-                        Write-Log "Some requirements for $nodeName failed (non-critical)" -Level 3 -Color Yellow
-                    }
-                } catch {
-                    Write-Log "Some requirements for $nodeName failed (non-critical)" -Level 3 -Color Yellow
-                }
-            }
-        }
-        
-        $successCount++
+    try {
+        # La commande 'restore' installe tout ce qui est dans le JSON
+        Invoke-AndLog $pythonExe "`"$cmCliScript`" restore `"$snapshotFile`""
+        Write-Log "Snapshot restoration complete!" -Level 1 -Color Green
+    } catch {
+        Write-Log "ERROR: Snapshot restoration failed. Check logs." -Level 1 -Color Red
+        # Optionnel : On pourrait ne pas bloquer ici, mais c'est critique si le snapshot échoue.
     }
-    else {
-        Write-Log "$nodeName (already exists, skipping)" -Level 1 -Color Green
-        $successCount++
+
+} else {
+    # --- METHODE B : Fallback vers CSV (Si pas de snapshot) ---
+    Write-Log "No snapshot.json found. Falling back to custom_nodes.csv..." -Level 1 -Color Yellow
+    
+    $csvPath = Join-Path $InstallPath $dependencies.files.custom_nodes_csv.destination
+    if (Test-Path $csvPath) {
+        $customNodes = Import-Csv -Path $csvPath
+        $successCount = 0
+        $failCount = 0
+
+        foreach ($node in $customNodes) {
+            $nodeName = $node.Name
+            $repoUrl = $node.RepoUrl
+            $possiblePath = Join-Path $customNodesPath $nodeName
+
+            if (-not (Test-Path $possiblePath)) {
+                Write-Log "Installing $nodeName via CLI..." -Level 1
+                try {
+                    Invoke-AndLog $pythonExe "`"$cmCliScript`" install $repoUrl"
+                    $successCount++
+                } catch {
+                    Write-Log "Failed to install $nodeName via CLI." -Level 2 -Color Red
+                    $failCount++
+                }
+            } else {
+                Write-Log "$nodeName already exists." -Level 1 -Color Green
+                $successCount++
+            }
+        }
+        Write-Log "Custom nodes installation summary: $successCount processed." -Level 1
+    } else {
+        Write-Log "WARNING: Neither snapshot.json nor custom_nodes.csv were found." -Level 1 -Color Red
     }
 }
 
-Write-Log "Custom nodes installation summary: $successCount succeeded, $failCount failed" -Level 1 -Color $(if ($failCount -eq 0) { "Green" } else { "Yellow" })
-
+# --- Step 6: Install GPU-specific optimisations ---
 Write-Log "Installing GPU-specific optimisations" -Level 0
-Write-Log "Installing packages from git repositories..." -Level 1
 if ($global:hasGpu) {
     Write-Log "GPU detected, installing GPU-specific repositories..." -Level 1
    
@@ -185,7 +224,8 @@ if ($global:hasGpu) {
         $pipArgs += $installUrl
 
         try {
-            $output = & python $pipArgs 2>&1
+            # Use $pythonExe
+            $output = & $pythonExe $pipArgs 2>&1
             if ($LASTEXITCODE -eq 0) {
                 Write-Log "$($repo.name) installed successfully" -Level 2 -Color Green
 				
@@ -209,7 +249,8 @@ foreach ($wheel in $dependencies.pip_packages.wheels) {
         Download-File -Uri $wheel.url -OutFile $wheelPath
         
         if (Test-Path $wheelPath) {
-            $output = & python -m pip install "`"$wheelPath`"" 2>&1
+            # Use $pythonExe
+            $output = & $pythonExe -m pip install "`"$wheelPath`"" 2>&1
             if ($LASTEXITCODE -eq 0) {
                 Write-Log "$($wheel.name) installed successfully" -Level 3 -Color Green
             } else {
@@ -220,10 +261,9 @@ foreach ($wheel in $dependencies.pip_packages.wheels) {
     } catch {
         Write-Log "Failed to download/install $($wheel.name) (continuing...)" -Level 3 -Color Yellow
     }
-	
 }
 
-# --- Step 6: Download Workflows & Settings ---
+# --- Step 7: Download Workflows & Settings ---
 Write-Log "Downloading Workflows & Settings..." -Level 0
 $settingsFile = $dependencies.files.comfy_settings
 $settingsDest = Join-Path $InstallPath $settingsFile.destination
@@ -237,7 +277,7 @@ if (-not (Test-Path $workflowCloneDest)) {
     Invoke-AndLog "git" "clone $($workflowRepo.url) `"$workflowCloneDest`""
 }
 
-# --- Step 7: Optional Model Pack Downloads ---
+# --- Step 8: Optional Model Pack Downloads ---
 Write-Log "Optional Model Pack Downloads" -Level 0
 
 # Copy the base models directory if it exists
@@ -266,20 +306,18 @@ foreach ($pack in $modelPacks) {
 
     $validInput = $false
     while (-not $validInput) {
-        # Use Write-Log for the prompt to keep the color formatting.
         Write-Log "Would you like to download $($pack.Name) models? (Y/N)" -Level 1 -Color Yellow
         $choice = Read-Host
 
         if ($choice -eq 'Y' -or $choice -eq 'y') {
             Write-Log "Launching downloader for $($pack.Name) models..." -Level 2 -Color Green
-            # The external script will handle its own logging.
+            # External script call: We pass InstallPath
             & $scriptPath -InstallPath $InstallPath
             $validInput = $true
         } elseif ($choice -eq 'N' -or $choice -eq 'n') {
             Write-Log "Skipping download for $($pack.Name) models." -Level 2
             $validInput = $true
         } else {
-            # Use Write-Log for the error message.
             Write-Log "Invalid choice. Please enter Y or N." -Level 2 -Color Red
         }
     }

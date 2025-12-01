@@ -73,8 +73,8 @@ Write-Log "             Starting UmeAiRT ComfyUI Update Process" -Level -2 -Colo
 Write-Log "===============================================================================" -Level -2
 Write-Log "Python Executable used: $pythonExe" -Level 1
 
-# --- 1. Update Git Repositories ---
-Write-Log "Updating all Git repositories..." -Level 0 -Color Green
+# --- 1. Update Git Repositories (Core & Workflows) ---
+Write-Log "Updating Core Git repositories..." -Level 0 -Color Green
 Write-Log "Updating ComfyUI Core..." -Level 1
 Invoke-AndLog "git" "-C `"$comfyPath`" pull"
 
@@ -91,48 +91,70 @@ Write-Log "  Step 3/3: Pulling updates (pull)..." -Level 2
 Invoke-AndLog "git" "-C `"$workflowPath`" pull"
 
 # --- 2. Update and Install Custom Nodes & Dependencies ---
-Write-Log "Updating/Installing Custom Nodes & Dependencies..." -Level 0 -Color Green
-$csvUrl = $dependencies.files.custom_nodes_csv.url
-$csvPath = Join-Path $InstallPath "scripts\custom_nodes.csv"
-# Download fresh CSV if needed, or rely on existing logic. Assuming local exists for now or is handled elsewhere.
-if (Test-Path $csvPath) {
-    $customNodesList = Import-Csv -Path $csvPath
-} else {
-    Write-Log "WARNING: custom_nodes.csv not found locally. Skipping node checks." -Level 1 -Color Yellow
-    $customNodesList = @()
-}
+Write-Log "Updating/Installing Custom Nodes..." -Level 0 -Color Green
 
-if ($customNodesList.Count -gt 0) {
-    Write-Log "Checking all nodes based on custom_nodes.csv..." -Level 1
+# --- A. Update ComfyUI-Manager FIRST (Critical for cm-cli) ---
+$managerPath = Join-Path $customNodesPath "ComfyUI-Manager"
+Write-Log "Updating ComfyUI-Manager..." -Level 1
+if (Test-Path $managerPath) {
+    Invoke-AndLog "git" "-C `"$managerPath`" pull"
+} else {
+    Write-Log "ComfyUI-Manager missing. Installing..." -Level 2
+    Invoke-AndLog "git" "clone https://github.com/ltdrdata/ComfyUI-Manager.git `"$managerPath`""
+}
+$cmCliScript = Join-Path $managerPath "cm-cli.py"
+
+# --- B. Snapshot vs CSV Logic ---
+$snapshotFile = Join-Path $scriptPath "snapshot.json"
+
+if (Test-Path $snapshotFile) {
+    # --- METHOD 1: Snapshot (Preferred) ---
+    Write-Log "SNAPSHOT DETECTED: Using ComfyUI-Manager to sync nodes..." -Level 1 -Color Cyan
+    Write-Log "This will update existing nodes and install missing ones defined in snapshot.json." -Level 2
     
-    foreach ($node in $customNodesList) {
-        $nodeName = $node.Name
-        $repoUrl = $node.RepoUrl
-        $nodePath = if ($node.Subfolder) { Join-Path $customNodesPath $node.Subfolder } else { Join-Path $customNodesPath $nodeName }
+    try {
+        # 'restore' creates missing nodes AND updates existing ones to the snapshot commit
+        Invoke-AndLog $pythonExe "`"$cmCliScript`" restore `"$snapshotFile`""
+        Write-Log "Snapshot sync complete!" -Level 1 -Color Green
+    } catch {
+        Write-Log "ERROR: Snapshot sync failed. Check logs." -Level 1 -Color Red
+    }
+
+} else {
+    # --- METHOD 2: CSV Fallback ---
+    Write-Log "No snapshot.json found. Falling back to custom_nodes.csv..." -Level 1 -Color Yellow
     
-        # Step 1: Update or Install
-        if (Test-Path $nodePath) {
-            # Node exists -> Update
-            Write-Log "Updating $nodeName..." -Level 2 -Color Cyan
-            Invoke-AndLog "git" "-C `"$nodePath`" pull"
-        } else {
-            # Node does not exist -> Install
-            Write-Log "New node found: $nodeName. Installing..." -Level 2 -Color Yellow
-            Invoke-AndLog "git" "clone $repoUrl `"$nodePath`""
-        }
-    
-        # Step 2: Handle Dependencies
-        if (Test-Path $nodePath) {
-            if ($node.RequirementsFile) {
-                $reqPath = Join-Path $nodePath $node.RequirementsFile
-                
-                if (Test-Path $reqPath) {
-                    Write-Log "Checking requirements for $nodeName (from '$($node.RequirementsFile)')" -Level 2
-                    # FIX: Use specific python executable
-                    Invoke-AndLog $pythonExe "-m pip install -r `"$reqPath`""
+    $csvPath = Join-Path $InstallPath "scripts\custom_nodes.csv"
+    if (Test-Path $csvPath) {
+        $customNodesList = Import-Csv -Path $csvPath
+        
+        foreach ($node in $customNodesList) {
+            $nodeName = $node.Name
+            $repoUrl = $node.RepoUrl
+            $nodePath = if ($node.Subfolder) { Join-Path $customNodesPath $node.Subfolder } else { Join-Path $customNodesPath $nodeName }
+        
+            # Update or Install
+            if (Test-Path $nodePath) {
+                Write-Log "Updating $nodeName..." -Level 2 -Color Cyan
+                Invoke-AndLog "git" "-C `"$nodePath`" pull"
+            } else {
+                Write-Log "New node found: $nodeName. Installing..." -Level 2 -Color Yellow
+                Invoke-AndLog "git" "clone $repoUrl `"$nodePath`""
+            }
+        
+            # Handle Dependencies
+            if (Test-Path $nodePath) {
+                if ($node.RequirementsFile) {
+                    $reqPath = Join-Path $nodePath $node.RequirementsFile
+                    if (Test-Path $reqPath) {
+                        Write-Log "Checking requirements for $nodeName..." -Level 2
+                        Invoke-AndLog $pythonExe "-m pip install -r `"$reqPath`""
+                    }
                 }
             }
         }
+    } else {
+        Write-Log "WARNING: custom_nodes.csv not found locally either." -Level 1 -Color Yellow
     }
 }
 
@@ -140,7 +162,6 @@ if ($customNodesList.Count -gt 0) {
 Write-Log "Updating all Python dependencies..." -Level 0 -Color Green
 Write-Log "Checking main ComfyUI requirements..." -Level 1
 $mainReqs = Join-Path $comfyPath "requirements.txt"
-# FIX: Use specific python executable
 Invoke-AndLog $pythonExe "-m pip install -r `"$mainReqs`""
 
 # Reinstall wheel packages to ensure correct versions from JSON
@@ -157,7 +178,6 @@ foreach ($wheel in $dependencies.pip_packages.wheels) {
         Download-File -Uri $wheelUrl -OutFile $localWheelPath
 
         if (Test-Path $localWheelPath) {
-            # FIX: Use specific python executable
             Invoke-AndLog $pythonExe "-m pip install `"$localWheelPath`""
         } else {
             Write-Log "ERROR: Failed to download $wheelName" -Level 2 -Color Red

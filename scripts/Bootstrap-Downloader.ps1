@@ -24,6 +24,7 @@ $filesToDownload = @(
     @{ RepoPath = "scripts/environment.yml";             LocalPath = "scripts/environment.yml" },
     @{ RepoPath = "scripts/dependencies.json";           LocalPath = "scripts/dependencies.json" },
     @{ RepoPath = "scripts/custom_nodes.csv";            LocalPath = "scripts/custom_nodes.csv" },
+    @{ RepoPath = "scripts/snapshot.json";            	 LocalPath = "scripts/snapshot.json" },
     # Batch Launchers
     @{ RepoPath = "UmeAiRT-Start-ComfyUI.bat";           LocalPath = "UmeAiRT-Start-ComfyUI.bat" },
     @{ RepoPath = "UmeAiRT-Download_models.bat";         LocalPath = "UmeAiRT-Download_models.bat" },
