@@ -186,13 +186,13 @@ $env:COMFYUI_PATH = $comfyPath
 
 if (Test-Path $snapshotFile) {
     # --- METHOD A: Snapshot (Recommended) ---
-    Write-Log "SNAPSHOT DETECTED: Restoring environment from snapshot.json..." -Level 1 -Color Cyan
+    Write-Log "Installing custom nodes from snapshot.json..." -Level 1 -Color Cyan
     Write-Log "This may take a while as it installs all nodes and dependencies..." -Level 2
     
     try {
         # Using 'restore-snapshot' command
         Invoke-AndLog $pythonExe "`"$cmCliScript`" restore-snapshot `"$snapshotFile`""
-        Write-Log "Snapshot restoration complete!" -Level 1 -Color Green
+        Write-Log "Custom nodes installation complete!" -Level 1 -Color Green
     } catch {
         Write-Log "ERROR: Snapshot restoration failed. Check logs." -Level 1 -Color Red
     }

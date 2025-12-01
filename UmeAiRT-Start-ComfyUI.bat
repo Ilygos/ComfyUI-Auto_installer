@@ -1,12 +1,16 @@
 @echo off
+setlocal
 set "PYTHONPATH="
 set "PYTHONNOUSERSITE=1"
 set "InstallPath=%~dp0"
 REM Remove trailing backslash
 if "%InstallPath:~-1%"=="\" set "InstallPath=%InstallPath:~0,-1%"
 
+:: ================================================================
+:: 1. ENVIRONMENT DETECTION & ACTIVATION
+:: ================================================================
 echo Checking installation type...
-set "InstallTypeFile=%InstallPath%\install_type"
+set "InstallTypeFile=%InstallPath%\scripts\install_type"
 set "InstallType=conda"
 
 if exist "%InstallTypeFile%" (
@@ -28,6 +32,7 @@ if "%InstallType%"=="venv" (
     )
 ) else (
     echo [INFO] Activating Conda environment...
+    REM On suppose une installation standard Miniconda
     call "%LOCALAPPDATA%\Miniconda3\Scripts\activate.bat"
     call conda activate UmeAiRT
     if %errorlevel% neq 0 (
@@ -37,19 +42,18 @@ if "%InstallType%"=="venv" (
     )
 )
 
-echo Starting ComfyUI with custom arguments...
+:: ================================================================
+:: 2. LAUNCH COMFIYUI
+:: ================================================================
+echo Starting ComfyUI...
 
-REM Moves to the ComfyUI folder.
+REM Move to the internal ComfyUI folder
 cd /d "%InstallPath%\ComfyUI"
 
-REM Prepares the base path, ensuring it is correctly formatted.
-set "RAW_BASE_DIR=%InstallPath%"
-if "%RAW_BASE_DIR:~-1%"=="\" set "RAW_BASE_DIR=%RAW_BASE_DIR:~0,-1%"
-
-set "BASE_DIR="%RAW_BASE_DIR%""
-set "TMP_DIR="%RAW_BASE_DIR%\ComfyUI\temp""
-
-echo Launching Python script...
-python main.py --use-sage-attention --disable-smart-memory --base-directory %BASE_DIR% --auto-launch --temp-directory %TMP_DIR%
+echo Launching Python main.py...
+REM Note: --listen for external uses
+REM Note: --auto-launch opens the browser automatically
+REM Note: --disable-smart-memory is optional, use only if needed for specific VRAM management
+python main.py --use-sage-attention --listen --disable-smart-memory --auto-launch
 
 pause
