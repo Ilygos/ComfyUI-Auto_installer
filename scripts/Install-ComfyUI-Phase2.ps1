@@ -140,6 +140,9 @@ $cmCliScript = Join-Path $managerPath "cm-cli.py"
 # 3. Check for snapshot.json in the scripts folder
 $snapshotFile = Join-Path $scriptPath "snapshot.json"
 
+$env:PYTHONPATH = "$comfyPath;$managerPath;$env:PYTHONPATH"
+$env:COMFYUI_PATH = $comfyPath
+
 if (Test-Path $snapshotFile) {
     # --- METHODE A : Installation via SNAPSHOT (Recommandé) ---
     Write-Log "SNAPSHOT DETECTED: Restoring environment from snapshot.json..." -Level 1 -Color Cyan

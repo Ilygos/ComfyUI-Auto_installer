@@ -46,8 +46,7 @@
       "triton-windows",
 	  "hf_xet",
 	  "nvidia-ml-py",
-	  "cupy-cuda12x",
-	  "utils"
+	  "cupy-cuda12x"
     ],
     "git_repos": [
 	{
