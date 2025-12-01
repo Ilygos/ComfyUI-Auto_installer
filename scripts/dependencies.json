@@ -31,11 +31,11 @@
       },
       {
         "name": "insightface-0.7.3-cp312-cp312-win_amd64",
-        "url": "https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/main/whl/insightface-0.7.3-cp312-cp312-win_amd64.whl"
+        "url": "https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/beta/whl/insightface-0.7.3-cp312-cp312-win_amd64.whl"
       },
       {
         "name": "triton-3.5.0.post21-py3-none-any",
-        "url": "https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/main/whl/triton-3.5.0.post21-py3-none-any.whl"
+        "url": "https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/beta/whl/triton-3.5.0.post21-py3-none-any.whl"
       }
     ],
     "standard": [
@@ -75,7 +75,7 @@
       "destination": "user/default/comfy.settings.json"
     },
     "custom_nodes_csv": {
-        "url": "https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/main/scripts/custom_nodes.csv",
+        "url": "https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/beta/scripts/custom_nodes.csv",
         "destination": "scripts/custom_nodes.csv"
     }
   }

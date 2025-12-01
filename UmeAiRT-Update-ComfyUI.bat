@@ -13,7 +13,7 @@ if "%InstallPath:~-1%"=="\" set "InstallPath=%InstallPath:~0,-1%"
 set "ScriptsFolder=%InstallPath%\scripts" 
 set "BootstrapScript=%ScriptsFolder%\Bootstrap-Downloader.ps1" 
 :: Use your main branch URL
-set "BootstrapUrl=https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/main/scripts/Bootstrap-Downloader.ps1" 
+set "BootstrapUrl=https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/beta/scripts/Bootstrap-Downloader.ps1" 
 
 echo [INFO] Forcing update of the bootstrap script itself...
 powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%BootstrapUrl%' -OutFile '%BootstrapScript%' -UseBasicParsing"
