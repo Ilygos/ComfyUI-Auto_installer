@@ -37,6 +37,9 @@ echo [INFO] Checking installation type...
 set "InstallTypeFile=%InstallPath%\scripts\install_type"
 set "InstallType=conda"
 
+set "CondaPath=%LOCALAPPDATA%\Miniconda3"
+set "CondaActivate=%CondaPath%\Scripts\activate.bat"
+
 if exist "%InstallTypeFile%" (
     set /p InstallType=<"%InstallTypeFile%"
 ) else (
@@ -55,8 +58,8 @@ if "%InstallType%"=="venv" (
     )
 ) else (
     echo [INFO] Activating Conda environment 'UmeAiRT'...
-    set "CondaPath=%LOCALAPPDATA%\Miniconda3"
-    set "CondaActivate=%CondaPath%\Scripts\activate.bat"
+    REM set "CondaPath=%LOCALAPPDATA%\Miniconda3"
+    REM set "CondaActivate=%CondaPath%\Scripts\activate.bat"
     if not exist "%CondaActivate%" (
         echo [ERROR] Could not find Conda at: %CondaActivate%
         pause
