@@ -1,5 +1,5 @@
 param(
-    [string]$BaseUrl = "https://github.com/UmeAiRT/ComfyUI-Auto_installer",
+    [string]$BaseUrl = "https://github.com/Ilygos/ComfyUI-Auto_installer",
     [string]$OutputPath = ".",
     [string]$TagFilter = "*",
     [switch]$NonInteractive,

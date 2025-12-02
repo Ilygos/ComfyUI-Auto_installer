@@ -42,14 +42,12 @@ echo Press any key to begin...
 pause > nul
 
 :: ============================================================================
-:: Section 2: Tag selection and Bootstrap downloader for all scripts
+:: Section 2: Bootstrap downloader for all scripts (Original logic)
 :: ============================================================================
 
 set "ScriptsFolder=%InstallPath%\scripts"
-set "FetchTagScript=%ScriptsFolder%\Fetch-Tag-Bootstrap.ps1"
-set "SelectedBootstrapScript=%ScriptsFolder%\Bootstrap-Downloader-Selected.ps1"
-set "SelectedTagFile=%ScriptsFolder%\selected-tag.txt"
-set "FetchTagUrl=https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/main/scripts/Fetch-Tag-Bootstrap.ps1"
+set "BootstrapScript=%ScriptsFolder%\Bootstrap-Downloader.ps1"
+set "BootstrapUrl=https://github.com/UmeAiRT/ComfyUI-Auto_installer/raw/main/scripts/Bootstrap-Downloader.ps1"
 
 :: Create scripts folder if it doesn't exist
 if not exist "%ScriptsFolder%" (
@@ -57,40 +55,14 @@ if not exist "%ScriptsFolder%" (
     mkdir "%ScriptsFolder%"
 )
 
-:: Download Fetch-Tag-Bootstrap.ps1 if it doesn't exist
-if not exist "%FetchTagScript%" (
-    echo [INFO] Downloading Fetch-Tag-Bootstrap.ps1...
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%FetchTagUrl%' -OutFile '%FetchTagScript%'"
-)
+:: Download the bootstrap script
+echo [INFO] Downloading the bootstrap script...
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%BootstrapUrl%' -OutFile '%BootstrapScript%'"
 
-:: Run Fetch-Tag-Bootstrap.ps1 to let user select a tag and download the bootstrap
-echo [INFO] Fetching available tags and selecting bootstrap version...
-echo.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%FetchTagScript%" -OutputPath "%ScriptsFolder%" -SelectedTagFile "%SelectedTagFile%"
-if errorlevel 1 (
-    echo [ERROR] Failed to fetch tags or user cancelled. Exiting.
-    pause
-    exit /b 1
-)
-
-:: Check if the selected bootstrap script exists
-if not exist "%SelectedBootstrapScript%" (
-    echo [ERROR] Selected bootstrap script not found: %SelectedBootstrapScript%
-    echo [ERROR] Please ensure a tag was selected successfully.
-    pause
-    exit /b 1
-)
-
-:: Run the selected bootstrap script to download all other files
-echo.
-echo [INFO] Running the selected bootstrap script to download all required files...
+:: Run the bootstrap script to download all other files
+echo [INFO] Running the bootstrap script to download all required files...
 :: Pass the clean install path to the PowerShell script.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SelectedBootstrapScript%" -InstallPath "%InstallPath%"
-if errorlevel 1 (
-    echo [ERROR] Bootstrap download failed.
-    pause
-    exit /b 1
-)
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%BootstrapScript%" -InstallPath "%InstallPath%"
 echo [OK] Bootstrap download complete.
 echo.
 
