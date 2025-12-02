@@ -146,7 +146,7 @@ foreach ($tag in $selectedTags) {
     
     # Download Bootstrap-Downloader.ps1 from the tag
     $bootstrapUrl = "$BaseUrl/raw/$tagName/scripts/Bootstrap-Downloader.ps1"
-    $outputFile = Join-Path $OutputPath "Bootstrap-Downloader.ps1"
+    $outputFile = Join-Path $OutputPath "Bootstrap-Downloader-Selected.ps1"
     
     Write-Host "  - Downloading from: $bootstrapUrl" -ForegroundColor Cyan
     
